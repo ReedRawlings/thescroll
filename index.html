@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#111b20" />
+    <title>The Scroll — Tower demo</title>
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <main class="layout">
+      <aside class="editorial">
+        <a class="wordmark" href="/"
+          >THE SCROLL<span>AN INTERNET FABLE</span></a
+        >
+        <div class="side-copy">
+          <span class="eyebrow">PLAYABLE FIELD NOTES / 001</span>
+          <h1>A little further.<br />One more floor.</h1>
+          <p>
+            Take two Familiars into a tower that rearranges itself. Find
+            something worth keeping. Know when to leave.
+          </p>
+          <div class="rule"></div>
+          <p class="small">
+            Three floors. One uninterrupted climb.<br />A pocket-sized
+            experiment in risk.
+          </p>
+        </div>
+        <a
+          class="guide-link"
+          href="/demo-guide.html"
+          target="_blank"
+          rel="noopener"
+          >Read the demo field guide <span>↗</span></a
+        >
+      </aside>
+      <div id="stage">
+        <section id="game-shell" aria-label="The Scroll game">
+          <div id="phaser"></div>
+          <div id="hud"></div>
+          <div id="overlay"></div>
+          <div id="toast" role="status" aria-live="polite"></div>
+        </section>
+      </div>
+      <aside class="field-notes">
+        <span class="eyebrow">YOUR EXPEDITION</span>
+        <h2 id="side-title">The tower is waiting.</h2>
+        <p id="side-description">
+          Choose your companions, then step through the gate.
+        </p>
+        <div class="rule"></div>
+        <span class="eyebrow">TRAVEL JOURNAL</span>
+        <ol id="journal">
+          <li>A new page. A familiar temptation.</li>
+        </ol>
+        <div class="keyboard-note">
+          <kbd>F</kbd> fullscreen <span>·</span> <kbd>Esc</kbd> pause<br />Tap
+          to walk. Swipe to choose.
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -271,3 +271,33 @@
     font-size: 9px;
   }
 }
+#seed-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+#seed-form label {
+  color: #cbb788;
+  font-size: 12px;
+}
+#seed-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px;
+  background: #182029;
+  color: #e3dfd1;
+  border: 1px solid #48525d;
+  border-radius: 4px;
+}
+#seed-form button {
+  padding: 10px;
+  background: #cbb788;
+  color: #162029;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#seed-form #reroll {
+  background: #28343c;
+  color: #e3dfd1;
+}

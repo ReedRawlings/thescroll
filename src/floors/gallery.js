@@ -1,4 +1,8 @@
 import Phaser from "phaser";
+import { generateBspFloor } from "./generated.js";
+import { terrainSprites } from "../tileset/render.js";
+const generated = new URLSearchParams(location.search).has("bsp");
+let bspSeed = new URLSearchParams(location.search).get("seed") || "stone-01";
 import { makeFloors, floorMetrics } from "./layouts.js";
 import { footprint } from "./dressing.js";
 import {
@@ -12,8 +16,8 @@ import { pathfind } from "../dungeon.js";
 import { ABILITIES, previewAction } from "../combat.js";
 import "../rooms/gallery.css";
 import "./gallery.css";
-const all = makeFloors();
-let s = startFloor(),
+const all = generated ? [generateBspFloor(bspSeed)] : makeFloors();
+let s = startFloor(0, generated ? all[0] : null),
   scene,
   manual = false,
   decorated = true,
@@ -27,6 +31,42 @@ let s = startFloor(),
 const $ = (q) => document.querySelector(q);
 document.title = "The Scroll — Five floor expeditions";
 document.body.innerHTML = `<main class="gallery floors"><header class="masthead"><a class="wordmark" href="/">THE SCROLL</a><span>FIVE FLOOR EXPEDITIONS</span><a href="/?rooms=1">Room examples ↗</a></header><section class="intro"><div><span class="eyebrow">Connected places. Different journeys.</span><h1>Five ways through the tower.</h1></div><p>Whole floors, from entrance to stairs. Each has its own silhouette, connected areas, pursuit routes and optional discoveries.</p></section><section class="workspace"><nav><div class="room-list"></div><p class="nav-note">Select any floor.<br>Play to explore at close range.<br>Overview to inspect the whole plan.<br><br>Tap to move. Contact opens timeline combat. Stairs complete the expedition.</p></nav><div><div class="viewport"><div class="view-head"><strong id="floor-label"></strong><span id="dimensions"></span></div><div class="floor-stage"><div id="floor-canvas"></div><div id="battle" hidden></div></div><div class="toolbar"><button id="overview" aria-pressed="true">Overview</button><button id="decor" aria-pressed="true">Detail</button><button id="routes" aria-pressed="false">Routes</button><button id="labels" aria-pressed="false">Places</button><button id="reset">Reset</button><button id="play" class="try">Play ▶</button></div></div><div id="party"></div><div id="supplies"><select id="supply-target" aria-label="Supply recipient"></select><button data-supply="potion"></button><button data-supply="tonic"></button></div><p id="status" class="status" role="status"></p><div class="legend"><span><i class="dot"></i>Direct approach</span><span><i class="dot blue"></i>Alternate route</span><span>◇ Chest · ↑ Stairs</span></div><button id="next" hidden>Next floor →</button></div><aside class="notes" id="notes"></aside></section><section class="decoration-guide"><span class="eyebrow">What changed</span><h2>The layout carries the identity.</h2><div class="principles"><article><h3>Different silhouettes</h3><p>A courtyard ring, organic caves, linked archive wings, bridged islands and a stepped fortress.</p></article><article><h3>Connected spaces</h3><p>Choose a route across an entire floor. Optional wings carry rewards; loops reconnect and allow retreat.</p></article><article><h3>Functional decoration</h3><p>Solid furniture belongs to the layout. Surface details cluster near walls and activity, keeping paths clear.</p></article><article><h3>Playable review</h3><p>Shared movement and combat, manual ability and target choices, supplies and an actual floor exit.</p></article></div></section><p class="footer">Five authored floor examples, with seeded surface details. Each selection starts a fresh review expedition; no town saves are changed. The main tower generator is separate. Research and code references are recorded in docs/design/floor-examples.md.</p></main>`;
+if (generated) {
+  document.title = "The Scroll — Generated dungeon";
+  $(".masthead span").textContent = "PROCEDURAL FLOOR / BSP";
+  $(".intro .eyebrow").textContent = "Seeded rooms. Furnished spaces.";
+  $("h1").textContent = "A new way through.";
+  $(".intro > p").textContent =
+    "Generate a floor, inspect its rooms, then explore. The same seed recreates the same layout, furniture and flooring.";
+  $(".nav-note").textContent =
+    "Play to walk and encounter enemies. Overview shows the full floor. Reset restarts the current seed with a fresh party.";
+  $(".room-list").insertAdjacentHTML(
+    "beforebegin",
+    '<form id="seed-form"><label for="seed">Floor seed</label><input id="seed" maxlength="80" autocomplete="off"><button type="submit">Generate</button><button type="button" id="reroll">New seed ↻</button></form>',
+  );
+  $("#seed").value = bspSeed;
+  $("#seed-form").onsubmit = (e) => {
+    e.preventDefault();
+    bspSeed = $("#seed").value.trim() || "stone-01";
+    regenerate();
+  };
+  $("#reroll").onclick = () => reroll();
+  $(".decoration-guide").hidden = true;
+  $(".footer").textContent =
+    "BSP room layouts, rule-based furniture and all 16 MiniRogue floor variants. Art by Matheus Tanuri / Marth. Each seed starts a fresh preview expedition.";
+  $(".legend .blue").parentElement.textContent = "Treasure detour";
+}
+function regenerate() {
+  $("#seed").value = bspSeed;
+  const url = new URL(location.href);
+  url.searchParams.set("seed", bspSeed);
+  history.replaceState(null, "", url);
+  choose(0);
+}
+function reroll() {
+  bspSeed = `stone-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`;
+  regenerate();
+}
 $(".room-list").innerHTML = all
   .map(
     (m, i) =>
@@ -34,7 +74,7 @@ $(".room-list").innerHTML = all
   )
   .join("");
 function choose(i) {
-  s = startFloor(i);
+  s = startFloor(i, generated ? generateBspFloor(bspSeed) : null);
   overview = true;
   ability = "strike";
   target = "";
@@ -47,7 +87,8 @@ document
   .querySelectorAll("[data-floor]")
   .forEach((b) => (b.onclick = () => choose(+b.dataset.floor)));
 $("#reset").onclick = () => choose(s.index);
-$("#next").onclick = () => choose((s.index + 1) % all.length);
+$("#next").onclick = () =>
+  generated ? reroll() : choose((s.index + 1) % all.length);
 $("#overview").onclick = () => {
   overview = !overview;
   if (overview) s.running = false;
@@ -190,6 +231,11 @@ const colors = {
 };
 class FloorScene extends Phaser.Scene {
   preload() {
+    if (generated)
+      this.load.spritesheet("dungeon-atlas", "/assets/tileset-study.png", {
+        frameWidth: 16,
+        frameHeight: 16,
+      });
     this.load.spritesheet("bridge", "/assets/rooms/bridge.png", {
       frameWidth: 16,
       frameHeight: 16,
@@ -290,8 +336,15 @@ class FloorScene extends Phaser.Scene {
         .flatMap(footprint)
         .map((p) => `${p.x},${p.y}`),
     );
+    if (generated) {
+      for (const tile of terrainSprites(m.terrain, m.floorFrames))
+        this.add
+          .image(tile.x * 16 + 8, tile.y * 16 + 8, "dungeon-atlas", tile.frame)
+          .setDepth(tile.layer === "floor" ? 0 : 1);
+    }
     for (let y = 0; y < m.height; y++)
       for (let x = 0; x < m.width; x++) {
+        if (generated) continue;
         const floor = !!m.tiles[y][x] || solids.has(`${x},${y}`);
         const border =
           !floor &&
@@ -387,6 +440,31 @@ class FloorScene extends Phaser.Scene {
           .setOrigin(0.5, 1)
           .setAlpha(p.solid || p.authored ? 1 : 0.75)
           .setDepth(p.y * 0.01 + 2);
+      }
+    }
+    if (generated && decorated) {
+      for (const p of m.wallFinishes)
+        this.add
+          .image(p.x * 16 + 8, p.y * 16 + 8, "dungeon-atlas", p.frame)
+          .setDepth(1.1);
+      for (const p of m.wallDecor) {
+        const sprite = this.add
+          .image(p.x * 16 + 8, p.y * 16 + 17, p.key, 0)
+          .setOrigin(0.5, 1)
+          .setDepth(3);
+        const scale = Math.min(1, 13 / sprite.width, 24 / sprite.height);
+        sprite.setScale(scale);
+        if (p.key === "torch") {
+          const glow = this.add.graphics().setDepth(2.9);
+          for (const [radius, alpha] of [
+            [25, 0.045],
+            [17, 0.065],
+            [9, 0.09],
+          ])
+            glow
+              .fillStyle(0xffbd68, alpha)
+              .fillCircle(p.x * 16 + 8, p.y * 16 + 10, radius);
+        }
       }
     }
     // Structural furniture remains visible even with cosmetic detail disabled.
@@ -511,6 +589,7 @@ window.render_game_to_text = () =>
     mode: s.mode,
     index: s.index,
     floor: s.map.id,
+    seed: s.map.seed,
     overview,
     decorated,
     routes,
@@ -529,6 +608,10 @@ window.render_game_to_text = () =>
     path: s.path,
     map: {
       tiles: s.map.tiles,
+      rooms: s.map.rooms,
+      props: s.map.props,
+      terrain: s.map.terrain,
+      floorFrames: s.map.floorFrames,
       exit: s.map.exit,
       chests: s.map.chests,
       enemies: s.map.enemies,

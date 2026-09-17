@@ -13,13 +13,14 @@ import {
   stepBattle,
   chooseAbility,
 } from "../combat.js";
-export function startFloor(index = 0) {
+export function startFloor(index = 0, suppliedMap = null) {
+  const map = suppliedMap ?? makeFloors()[index];
   const party = createParty();
   return {
     index,
-    map: makeFloors()[index],
+    map,
     party,
-    player: { ...makeFloors()[index].spawn },
+    player: { ...map.spawn },
     path: [],
     mode: "explore",
     running: false,

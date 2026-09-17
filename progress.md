@@ -132,3 +132,35 @@ Original prompt: Use Phaser to create a simple demo with a few tower levels, an 
 - Replaced hero art in the review battle timeline and party strip with the user-selected NovelMix/character/witch/faceset_16_px.png, copied to public/assets/ui/hero-witch.png.
 - Render the 16x16 portrait at crisp 2x (32x32). Battlefield enemies retain uniform 2x scaling. Main exploration asset is unchanged.
 - Browser interaction checks passed and updated action screenshot visually inspected.
+
+## MiniRogue tileset bench — 2026-09-17
+- User authorized inspecting the supplied sheet and building a small rendering test before choosing a tiling approach.
+- Added isolated /?tileset=1 route, three geometry cases, wall-piece/block comparison, grid toggle and clickable coordinate atlas. Used unchanged source art; no generated imagery or gameplay changes.
+- Classified floors, horizontal caps/faces and selected border pieces. Horizontal cap+face strip joins consistently. Marked unverified corner/junction/isolated cap assignments in amber; no complete dual-grid coverage verified. See docs/design/tileset-study.md for coordinates and limits.
+- Build passes; skill client and browser checks pass desktop/mobile controls with no errors. Inspected room, notch, diagonal and mobile screenshots in artifacts/tileset-study.
+- Next step after visual review: resolve provisional corners and layered wall height before production autotiling. BSP/interior generation remain separate future work. Existing user modification to sprites/TheScrollSprites.aseprite was left untouched.
+
+## Tileset wall assembly correction — 2026-09-17
+- User correctly noted the reference strip had caps plus faces while the assembly test used caps only. Applied that same two-row strip to horizontal boundaries throughout the test scene, with cap elevation projecting upward from the wall footprint.
+- Inspected the corrected skill-client screenshot at artifacts/tileset-study/wall-faces/shot-0.png. Corners and vertical-wall joins remain provisional; this change resolves the horizontal assembly mismatch.
+
+## Upper wall connectors — 2026-09-17
+- Applied the user's reference: horizontal endpoints that continue into a side wall below now use side connector caps instead of front faces. Interior horizontal spans retain their faces; bottom wall strips retain the previous assembly.
+- Visually checked the corrected room screenshot in artifacts/tileset-study/connectors/shot-0.png. Resolved endpoints no longer receive amber provisional markers.
+
+## Playable BSP floor with varied flooring — 2026-09-17
+- User approved the BSP/interior/playable-preview plan and explicitly identified all cells in atlas columns 0–3 and rows 0–3 as floor variations. Both the tileset bench and new generated renderer now use the full set.
+- Added /?bsp=1&seed=stone-01, using the shared floor gallery/model for walking, pursuit, timeline combat, supplies, loot and stairs. Seed form reproduces floors; New seed rerolls; Reset restarts the current seed.
+- Generator makes four rooms via BSP on a 25×29 map, connects the partitions and adds one graph edge. Two-tile corridors keep visible floor below raised wall caps. Separate terrain, collision, furniture footprints and floor-art selection preserve navigation beneath props.
+- Bounded furniture placement generates reading areas, storage groups, memorials and paired urns. It protects doorway approaches and room centers, keeps foreground edges clear, requires at least 72% open floor and tests room-local connectivity. One chest and three enemies preserve a compact encounter budget.
+- Applied the approved horizontal cap/face and upper-side connector rules to the generated terrain renderer. Main tower remains separate; this is a playable review route.
+- All 25 model tests pass, including 200 generated seeds, door clearance, content overlap, local/floor connectivity, all 16 floor variants and connector rendering. Production build passes. Browser playthrough and screenshot artifacts are in artifacts/bsp; test script tests/bsp.spec.mjs.
+- Final browser journeys passed all three seeds through loot and stairs, including combat, pause-at-command, supplies, mobile layout/taps, deterministic reset, new-seed controls and unchanged localStorage. No browser errors. Fixed the test helper to scroll the canvas into view after mobile supply interactions; no gameplay workaround was needed. Inspected final overview, mobile exploration and combat captures.
+
+## Generated wall decoration and internal voids — 2026-09-17
+- User supplied wall decor references and requested removal of bottom faces toward internal nonwalkable gaps.
+- Generated renderer omits faces toward internal voids, preserving caps, upper connectors and exterior bottom strips. Added a targeted regression test.
+- Added seeded wall hangings (banners, paintings, chains), mounted lights and brick finishes by room purpose, excluding door approaches. Detail toggle removes these cosmetics without changing collision.
+- Storage clusters now line the rear wall; coffins use side walls. Existing per-room and whole-floor connectivity validation still passes.
+- Inspected the user's stone-1x8a2cq seed using the required skill client; capture in artifacts/bsp/wall-decoration.
+- Final verification: 26 model tests and production build pass; all three browser journeys complete with loot, combat, mobile interactions, reset/reroll and no errors. Inspected mobile exploration after the decoration changes.

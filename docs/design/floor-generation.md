@@ -4,6 +4,8 @@ How a floor is assembled, and what gets placed in it.
 
 Movement and encounters: [exploration.md](exploration.md) · Numbers: [tuning.md](../tuning.md)
 
+Research and proposed next steps: [reviewed level-design brief](level-design-research.md) (2026-09-16; proposals, not settled rules).
+
 > **Status:** structure decided, all weights and counts `OPEN`.
 
 ## Shape
@@ -55,10 +57,10 @@ Worth reading: Bob Nystrom's *Rooms and Mazes* (the classic room-and-corridor wa
 
 Two things specific to this game:
 
-- **Room shape is encounter design, not decoration.** A chase cannot leave a room, so a cramped room makes its enemy a forced fight, a long room lets the player outpace one, and a room with cover makes a real chase. Prefabs should be named as encounter types, not scenery.
-- **Connectivity decides whether avoidance is possible.** A dead-end room means fight or turn back; a pass-through room means you can run past. A floor built from dead-end spurs quietly disables the avoidance mechanic.
+- **Room and corridor shape affect encounter approach and escape.** Chases can cross doorways, corridors and rooms. Chokepoints, sightlines, alternate exits and reconnecting paths determine whether the player can avoid or escape pursuit. Prefabs should describe those situations, not just scenery.
+- **Connectivity affects avoidance.** Dead ends can trap a fleeing party; connected loops can offer escape routes. A pass-through room does not guarantee safety because enemies can follow. Validate movement and pursuit on the complete floor.
 
-One architecture worth considering: **generate the room graph first (nodes, edges, roles, guaranteed path, at least one cycle), then fill each room with a prefab matching its role and exit count.** Since a scene is one room, these are cleanly separable — pacing tunes in the graph, feel tunes in the prefabs, and the graph is debuggable as text before anything renders.
+One architecture worth considering: **generate the room graph first (nodes, edges, roles, guaranteed path, at least one cycle), then fill each room with a prefab matching its role and exit count.** These layers are separable for authoring, while pursuit runs across the complete floor. Pacing tunes in the graph, local movement in the prefabs, and the graph is debuggable before anything renders.
 
 ## Generation constraints
 
@@ -67,7 +69,7 @@ The generator must guarantee:
 - **Connectivity.** Every room reachable from the entrance.
 - **Stairs placement.** Never in the entrance room; a minimum distance from it.
 - **Room count** inside the depth band above.
-- **Enemy count** on a depth curve, placed so a chase has space to play out inside a single room. See [exploration.md](exploration.md).
+- **Enemy count** on a depth curve, placed with approach, pursuit and retreat paths across the connected floor. See [exploration.md](exploration.md).
 - **Content placement** per the table below.
 - **Reject and reroll** any layout that fails validation. Cheaper and safer than trying to repair one.
 

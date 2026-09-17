@@ -1,0 +1,358 @@
+@font-face {
+  font-family: ScrollPixel;
+  src: url("/assets/ui/font_medium_9px.ttf");
+}
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #14171c;
+  color: #ede4d2;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+a {
+  color: #cfb57b;
+  text-decoration: none;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #f4cd7b;
+  outline-offset: 4px;
+}
+.gallery {
+  max-width: 1440px;
+  margin: auto;
+  padding: 34px 40px 50px;
+}
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #363941;
+  padding-bottom: 20px;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+.wordmark {
+  font-family: ScrollPixel, monospace;
+  font-size: 18px;
+  color: #f0d59e;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #bd9860;
+  font-weight: 650;
+}
+.intro {
+  display: flex;
+  justify-content: space-between;
+  gap: 35px;
+  align-items: end;
+  padding: 34px 0 30px;
+}
+.intro h1 {
+  font-size: clamp(30px, 4vw, 52px);
+  font-weight: 450;
+  letter-spacing: -2px;
+  margin: 10px 0;
+}
+.intro p {
+  max-width: 400px;
+  color: #a9abb3;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0 0 7px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 210px minmax(320px, 600px) minmax(210px, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+.room-list {
+  display: grid;
+  gap: 8px;
+}
+.room-button {
+  background: transparent;
+  color: #92969f;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  text-align: left;
+  padding: 15px 12px;
+  display: flex;
+  gap: 14px;
+  line-height: 1.4;
+}
+.room-button.active {
+  background: #252830;
+  border-color: #54505a;
+  color: #f5dfb4;
+}
+.room-button .number {
+  font-family: ScrollPixel, monospace;
+  color: #a08258;
+}
+.room-button small {
+  display: block;
+  font-size: 10px;
+  color: #898d99;
+  margin-top: 4px;
+}
+.nav-note {
+  font-size: 12px;
+  color: #7e858e;
+  line-height: 1.7;
+  padding: 16px 12px;
+}
+.viewport {
+  background: #0d1117;
+  border: 1px solid #3c3e48;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid #30333d;
+  font-size: 12px;
+  color: #a8a7b0;
+}
+.view-head strong {
+  color: #e0cb9e;
+  font-weight: 500;
+}
+#room-canvas {
+  width: 100%;
+  aspect-ratio: 1;
+}
+canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
+}
+.toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-top: 1px solid #30333d;
+}
+.toolbar button {
+  border: 1px solid #444752;
+  background: #222630;
+  color: #aaaeba;
+  border-radius: 4px;
+  padding: 9px 11px;
+  font-size: 12px;
+}
+.toolbar button[aria-pressed="true"] {
+  border-color: #c8a66a;
+  color: #f3d08d;
+  background: #343027;
+}
+.toolbar .try {
+  margin-left: auto;
+  background: #c9ad76;
+  color: #191d24;
+  border-color: #c9ad76;
+}
+.status {
+  font-size: 12px;
+  color: #bcb8ad;
+  margin: 12px 0;
+  min-height: 32px;
+  line-height: 1.6;
+}
+.legend {
+  display: flex;
+  gap: 17px;
+  font-size: 11px;
+  color: #9297a1;
+}
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  background: #d8b66e;
+}
+.dot.blue {
+  background: #8abfc6;
+}
+.notes {
+  padding: 6px 0;
+}
+.notes h2 {
+  font-size: 24px;
+  font-weight: 450;
+  line-height: 1.2;
+  margin: 10px 0 16px;
+}
+.notes h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: #c5ab79;
+  margin: 24px 0 8px;
+}
+.notes p {
+  font-size: 13px;
+  line-height: 1.75;
+  color: #aeb0b8;
+  margin: 0;
+}
+.notes .tag {
+  display: inline-block;
+  border: 1px solid #3f424a;
+  border-radius: 3px;
+  padding: 6px 9px;
+  color: #9097a1;
+  font-size: 10px;
+  margin-top: 20px;
+}
+.decoration-guide {
+  border-top: 1px solid #363941;
+  margin-top: 34px;
+  padding-top: 28px;
+}
+.decoration-guide h2 {
+  font-size: 23px;
+  font-weight: 450;
+  margin: 0 0 22px;
+}
+.principles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 26px;
+}
+.principles h3 {
+  font-size: 13px;
+  color: #cfb47d;
+  margin: 0 0 9px;
+}
+.principles p {
+  font-size: 12px;
+  color: #9298a2;
+  line-height: 1.75;
+  margin: 0;
+}
+.footer {
+  font-size: 11px;
+  color: #747d89;
+  margin-top: 30px;
+  line-height: 1.8;
+}
+@media (max-width: 1100px) {
+  .gallery {
+    padding: 24px;
+  }
+  .workspace {
+    grid-template-columns: 160px minmax(300px, 1fr);
+  }
+  .notes {
+    grid-column: 1/-1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 22px;
+  }
+  .notes .summary {
+    grid-column: 1/-1;
+  }
+  .notes h3 {
+    margin-top: 0;
+  }
+  .notes .tag {
+    display: none;
+  }
+  .principles {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .gallery {
+    padding: 18px 14px;
+  }
+  .masthead {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .intro {
+    display: block;
+    padding: 24px 0 16px;
+  }
+  .intro h1 {
+    letter-spacing: -1px;
+    margin: 8px 0 12px;
+  }
+  .intro p {
+    font-size: 12px;
+  }
+  .workspace {
+    display: block;
+  }
+  .room-list {
+    display: flex;
+    overflow: auto;
+    margin-bottom: 14px;
+    gap: 4px;
+  }
+  .room-button {
+    flex-shrink: 0;
+    padding: 10px;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .room-button small,
+  .nav-note {
+    display: none;
+  }
+  .view-head {
+    padding: 12px;
+    font-size: 10px;
+  }
+  .toolbar {
+    gap: 5px;
+    padding: 9px;
+  }
+  .toolbar button {
+    padding: 9px 8px;
+    font-size: 11px;
+  }
+  .notes {
+    display: block;
+    padding-top: 16px;
+  }
+  .notes h3 {
+    margin-top: 18px;
+  }
+  .notes h2 {
+    font-size: 22px;
+  }
+  .principles {
+    gap: 20px;
+  }
+  .decoration-guide {
+    margin-top: 28px;
+  }
+  .legend {
+    font-size: 10px;
+  }
+}

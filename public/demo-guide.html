@@ -504,7 +504,7 @@
       <div class="hero-inner">
         <p class="kicker">Playable systems slice · field guide</p>
         <h1>Read the room.<br><em>Race the clock.</em></h1>
-        <p class="lede">A compact guide to the three-floor Phaser demo: explore a seeded dungeon, choose your fights, and command a party on a live timeline that waits when you need it.</p>
+        <p class="lede">A compact guide to the three-floor Phaser 4.2.1 demo: explore a seeded dungeon, choose your fights, and command a party on a live timeline that waits when you need it.</p>
         <div class="hero-meta" aria-label="Demo highlights">
           <span class="chip">3 generated floors</span>
           <span class="chip">Player + 2 Familiars</span>
@@ -538,7 +538,7 @@
 
       <div class="controls" aria-label="Controls">
         <article class="control-row"><span class="gesture" aria-hidden="true">↗</span><div><h3>Choose a destination</h3><p>Tap or click open floor space to move. Choose another point to redirect, or tap the hero to stop.</p></div></article>
-        <article class="control-row"><span class="gesture" aria-hidden="true">◎</span><div><h3>Enter an encounter</h3><p>Contact with a visible monster opens the battle view. Corridors give you breathing room.</p></div></article>
+        <article class="control-row"><span class="gesture" aria-hidden="true">◎</span><div><h3>Enter an encounter</h3><p>Contact with a visible monster opens the battle view. Enemies can follow through rooms and corridors.</p></div></article>
         <article class="control-row"><span class="gesture" aria-hidden="true">↔</span><div><h3>Choose and target</h3><p>Cycle the focused ability and valid target. Targeting is intentionally manual in this build.</p></div></article>
         <article class="control-row"><span class="gesture" aria-hidden="true">✓</span><div><h3>Commit the command</h3><p>Review the selection, then confirm. The frozen timeline resumes and the action begins charging.</p></div></article>
       </div>
@@ -595,22 +595,22 @@ Damage        = Base Damage × Level Modifier × Type Modifier</div>
     <section class="section shell" id="dungeon">
       <div class="section-head">
         <div><span class="section-no">03 · Floor plan</span><h2>Rooms set the risk</h2></div>
-        <div><p class="section-intro">The demo builds each 19×25-tile floor from four separated rooms and a cycle of safe dogleg corridors. The same seed produces the same arrangement, making generation and encounter behavior easier to inspect.</p></div>
+        <div><p class="section-intro">The demo builds each 19×25-tile floor from four separated rooms and a cycle of connected dogleg corridors. The same seed produces the same arrangement, making generation and encounter behavior easier to inspect.</p></div>
       </div>
 
-      <div class="floor-map" role="img" aria-label="Diagram of four connected rooms with a cycle of safe corridors">
+      <div class="floor-map" role="img" aria-label="Diagram of four connected rooms with a cycle of connected corridors">
         <div class="corridor corridor-a"></div><div class="corridor corridor-b"></div><div class="corridor corridor-c"></div><div class="corridor corridor-d"></div>
         <div class="map-room room-a"><div><strong>Entrance</strong><span>Room 0 · lower-left</span></div></div>
         <div class="map-room room-b"><div><strong>Encounter room</strong><span>Room 2 · upper-left</span></div></div>
         <div class="map-room room-c"><div><strong>Stairs</strong><span>Room 3 · upper-right</span></div></div>
         <div class="map-room room-d"><div><strong>Treasure</strong><span>Room 1 · lower-right</span></div></div>
-        <span class="safe-tag">safe corridor cycle</span>
+        <span class="safe-tag">connected corridor cycle</span>
       </div>
 
       <div class="card-grid" style="margin-top:1rem">
         <article class="card"><span class="card-icon" aria-hidden="true">◇</span><h3>Connected by design</h3><p>Every walkable tile is reachable. A chest waits in the lower-right room; stairs are placed in the upper-right, away from the start.</p></article>
-        <article class="card"><span class="card-icon" aria-hidden="true">!</span><h3>Threats stay visible</h3><p>Seeded enemies begin away from corridor axes so normal encounters remain avoidable. Floor three places the Warden near the stairs.</p></article>
-        <article class="card"><span class="card-icon" aria-hidden="true">↶</span><h3>Avoidance is play</h3><p>A chase is bounded by its room. Move through or leave the room to break pursuit when the layout allows it.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">!</span><h3>Threats stay visible</h3><p>Seeded enemies begin away from corridor axes and detect through clear sightlines. Floor three places the Warden near the stairs.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">↶</span><h3>Avoidance is play</h3><p>Enemies follow through doorways, corridors and other rooms. Gain distance to escape; crossing a doorway does not end pursuit.</p></article>
       </div>
     </section>
 
@@ -627,7 +627,7 @@ Damage        = Base Damage × Level Modifier × Type Modifier</div>
           <ul class="rule-list">
             <li>Party composition is the player plus two Familiars.</li>
             <li>Exploration is tap-to-move, with visible enemies and no random encounters.</li>
-            <li>Enemy pursuit is room-scoped; touching one starts a separate battle.</li>
+            <li>Enemy pursuit crosses rooms and corridors; touching one starts a separate battle anywhere walkable.</li>
             <li>The complete battle simulation pauses while any ally chooses at COM.</li>
             <li>Targets are selected manually and the command is previewed before commitment.</li>
             <li>Damage adds ability ATK to character ATK, then applies DEF, level, and type modifiers.</li>
@@ -647,7 +647,7 @@ Damage        = Base Damage × Level Modifier × Type Modifier</div>
             <li>Normal victories award 18 / 24 / 30 gold by floor; the Warden awards 65. Chests hold 15 / 20 / 25 gold and one draught.</li>
             <li>Every two victories, living allies gain one demo level, +2 ATK, and up to +4 max HP and current HP. Demo level caps at 3; MP does not recover.</li>
             <li>The town compresses the long-term hub into a title, saved totals, starting kit, party preview, and tower entrance. No shops are implemented.</li>
-            <li>Each climb begins with two healing draughts, one ether tonic, one escape seed, and three stackable bag slots.</li>
+            <li>Each climb begins with two healing draughts, one ether tonic, one escape seed, and ten total slots (three equipment and seven item slots). Each supply occupies its own slot; only currencies stack.</li>
             <li>Banked gold and Familiar levels persist locally. Actions and a one-second heartbeat save the live climb; backgrounding pauses it for resume. Death still ends it.</li>
           </ul>
         </article>
@@ -660,7 +660,7 @@ Damage        = Base Damage × Level Modifier × Type Modifier</div>
             <article class="ledger-block">
               <h4>Floor movement</h4>
               <p>The player moves at <strong>3.3 tiles/s</strong>. An alerted enemy chases at <strong>1.65 tiles/s</strong> and returns home at <strong>1.1 tiles/s</strong>.</p>
-              <p>A monster alerts only while the player is in the same room and within <strong>3.3 tiles</strong>. Contact below <strong>0.63 tile</strong> begins battle. Corridors have no room ID, so they end pursuit.</p>
+              <p>A monster detects the player within <strong>3.3 tiles</strong> with clear line of sight. It pursues across the floor until separation exceeds <strong>7 tiles</strong>, then walks home. Contact below <strong>0.63 tile</strong> with no intervening wall begins battle in rooms or corridors. Other enemies retain their positions when battle ends.</p>
               <p>The entire 19×25 floor is visible. This slice has <strong>no minimap</strong> or fog of war.</p>
             </article>
             <article class="ledger-block">
@@ -756,6 +756,7 @@ effective SPD = (core + .25 × bonus) × level factor × frost factor</div>
         <div><span class="section-no">07 · Verification</span><h2>Evidence log</h2></div>
         <div><p class="section-intro">Validation belongs beside the build it describes. This entry remains deliberately factual and will be updated from actual runtime evidence.</p></div>
       </div>
+      <div class="callout"><strong>Framework update · September 16, 2026:</strong> the demo now runs Phaser 4.2.1, the <a href="https://phaser.io/download/phaser4">latest stable release verified on that date</a>, using WebGL. Pointer scaling refreshes after layout/fullscreen changes. The complete gameplay, save/resume, swipe, mobile, fullscreen and defeat checks below were rerun after migration; the integration test asserts the live engine version and renderer. Gameplay rules and existing local saves are preserved.</div>
       <div class="status-panel">
         <span class="status-light" aria-hidden="true"></span>
         <div><h3>Twelve model checks, the production build, and full browser integration pass</h3><p><code>npm test</code> passes all 12 combat and dungeon checks, including timing and damage math, full-party COM pausing, statuses, retargeting, defeat, deterministic replay, exact suspend-resume state, 300 seed-and-floor connectivity cases, pathfinding, and seeded variation. <code>npm run build</code> also completes successfully. Browser scripts completed all three floors and 10 battles including the Warden, opened chests, used stairs and healing, changed abilities and manual targets, held COM frozen for five seconds, and banked 341 gold with zero console or page errors. Persistence checks verified title-to-reload resume, reload while frozen at COM, ability and target swipes, reward-screen reconstruction after reload, dismissed-stairs behavior, extraction and banked gold across reload, and a 390×844 layout with no overflow. Evidence comes from <code>tests/integration.spec.mjs</code> and <code>tests/persistence.spec.mjs</code>, with browser artifacts stored under <code>artifacts/</code>. Additional browser checks passed for real-time movement, pause/resume, fullscreen scaling, and the whole-party wipe screen with save deletion. The wipe check uses a deliberately low-health save fixture to isolate that outcome. These checks are in <code>tests/controls.spec.mjs</code>.</p></div>

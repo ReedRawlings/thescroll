@@ -3,6 +3,12 @@ import "./style.css";
 import { ASSETS } from "./assets.js";
 import { generateDungeon, pathfind, roomAt, seededRandom } from "./dungeon.js";
 import {
+  MOVEMENT,
+  approach,
+  enemyInContact,
+  updateEnemies,
+} from "./exploration.js";
+import {
   ABILITIES,
   createParty,
   createEncounter,
@@ -14,9 +20,16 @@ import {
 
 const W = 440,
   H = 820,
-  TILE = 17,
-  MAP_X = (W - 19 * TILE) / 2,
-  MAP_Y = 198;
+  TILE = 32,
+  VIEW_TILES = 11,
+  VIEW_RADIUS = 5,
+  VIEW_SIZE = VIEW_TILES * TILE,
+  MAP_X = (W - VIEW_SIZE) / 2,
+  MAP_Y = 230;
+const ITEM_SLOTS = 7; // Ten starting slots: three equipment plus seven items.
+const usedSlots = (items) =>
+  Object.values(items).reduce((sum, count) => sum + count, 0);
+let displayScale = 1;
 const SAVE = "scroll-demo-v1",
   META = "scroll-meta-v1";
 const $ = (s) => document.querySelector(s);
@@ -173,7 +186,7 @@ function loadFloor(floor) {
   );
   toast(
     floor === 1
-      ? "Tap a floor tile to walk. Rooms hold danger; corridors are safe."
+      ? "Tap a floor tile to walk. Enemies can follow through rooms and corridors."
       : floor === 3
         ? "The Ash Warden guards the way out."
         : "A new floor. The tower rearranges itself.",
@@ -291,12 +304,7 @@ function continueAfterBattle() {
   }
   state.mode = "explore";
   state.battle = null;
-  state.map.enemies.forEach((e) => {
-    e.x = e.homeX;
-    e.y = e.homeY;
-    e.alert = false;
-    e.path = [];
-  });
+  // Other enemies remain where exploration paused when contact began.
   redraw();
   save();
 }
@@ -333,47 +341,40 @@ function moveTo(x, y) {
     save();
   }
 }
-function approach(pos, path, speed, dt) {
-  let travel = speed * dt;
-  while (path.length && travel > 0) {
-    const next = path[0],
-      dx = next.x - pos.x,
-      dy = next.y - pos.y,
-      dist = Math.hypot(dx, dy);
-    if (dist <= travel + 0.0001) {
-      pos.x = next.x;
-      pos.y = next.y;
-      path.shift();
-      travel -= dist;
-    } else {
-      pos.x += (dx / dist) * travel;
-      pos.y += (dy / dist) * travel;
-      travel = 0;
-    }
-  }
-}
 function checkInteractions() {
   if (state.mode !== "explore" || modal) return;
   const p = state.player,
     m = state.map;
   for (const e of m.enemies) {
-    if (
-      roomAt(m, Math.round(p.x), Math.round(p.y))?.id === e.roomId &&
-      Math.hypot(p.x - e.x, p.y - e.y) < 0.63
-    ) {
+    if (enemyInContact(m, p, e)) {
       enterBattle(e);
       return;
     }
   }
   for (const c of m.chests) {
+    if (
+      c.opened &&
+      c.potion &&
+      usedSlots(state.items) < ITEM_SLOTS &&
+      Math.hypot(p.x - c.x, p.y - c.y) < 0.85
+    ) {
+      state.items.potion++;
+      c.potion = false;
+      toast("Collected the healing draught left in the chest.");
+      save();
+    }
     if (!c.opened && Math.hypot(p.x - c.x, p.y - c.y) < 0.85) {
       c.opened = true;
       state.path = [];
       const gold = 10 + state.floor * 5;
       state.runGold += gold;
-      state.items.potion = Math.min(99, state.items.potion + 1);
-      journal(`A chest: ${gold} gold and a healing draught.`);
-      openModal("chest", { gold });
+      const packed = usedSlots(state.items) < ITEM_SLOTS;
+      if (packed) state.items.potion++;
+      else c.potion = true;
+      journal(
+        `A chest: ${gold} gold. ${packed ? "Healing draught packed." : "Bag full; draught left in the chest."}`,
+      );
+      openModal("chest", { gold, packed });
       scene.redraw();
       return;
     }
@@ -400,32 +401,8 @@ function simulation(dt) {
   }
   if (modal || document.hidden) return;
   if (state.mode === "explore") {
-    approach(state.player, state.path, 3.3, dt);
-    const p = state.player;
-    const pr = roomAt(state.map, Math.round(p.x), Math.round(p.y));
-    for (const e of state.map.enemies) {
-      if (e.boss) continue;
-      const same = pr?.id === e.roomId;
-      if (same && Math.hypot(p.x - e.x, p.y - e.y) < 3.3) e.alert = true;
-      if (!same) e.alert = false;
-      const goal = e.alert
-        ? { x: Math.round(p.x), y: Math.round(p.y) }
-        : { x: e.homeX, y: e.homeY };
-      const start = e.path?.[0] ?? { x: Math.round(e.x), y: Math.round(e.y) };
-      if (!e.path?.length || e.goalX !== goal.x || e.goalY !== goal.y) {
-        const raw = pathfind(state.map, start, goal);
-        e.path = [];
-        for (const t of raw) {
-          if (roomAt(state.map, t.x, t.y)?.id !== e.roomId) break;
-          e.path.push(t);
-        }
-        if (e.path.length && Math.hypot(e.x - start.x, e.y - start.y) > 0.001)
-          e.path.unshift(start);
-        e.goalX = goal.x;
-        e.goalY = goal.y;
-      }
-      approach(e, e.path, e.alert ? 1.65 : 1.1, dt);
-    }
+    approach(state.player, state.path, MOVEMENT.playerSpeed, dt);
+    updateEnemies(state.map, state.player, dt);
     checkInteractions();
   } else if (state.mode === "combat") {
     const b = state.battle;
@@ -487,7 +464,7 @@ function cycleAbility(n) {
 }
 function cycleTarget(n) {
   const s = currentSelection();
-  if (!s.targets?.length) return;
+  if (!s.targets?.length || s.ability.target === "all") return;
   selectedTarget = (selectedTarget + n + s.targets.length) % s.targets.length;
   lastUI = "";
   renderUI();
@@ -513,6 +490,7 @@ function renderUI() {
     state.mode,
     state.floor,
     state.runGold,
+    usedSlots(state.items),
     meta.gold,
     selectedAbility,
     selectedTarget,
@@ -530,7 +508,7 @@ function renderUI() {
   } else {
     html += partyHTML();
     if (state.mode === "explore") {
-      html += `<div class="floor-caption"><span>${["THE THRESHOLD", "THE ECHO CHAMBERS", "THE LAST WATCH"][state.floor - 1]}</span><span>SEED ${esc(state.seed)}</span></div><section class="bottom-panel"><span class="eyebrow">${state.floor === 3 ? "FIND THE WARDEN" : "EXPLORE AT YOUR OWN PACE"}</span><h3>${state.floor === 3 ? "The last watch" : "A little further?"}</h3><p>Tap to walk. Touch an enemy to battle.<br>Find the stairs, or take a detour for treasure.</p><div class="button-row"><button class="button" data-action="inventory">Bag <span style="color:var(--mint)">3 slots</span></button><button class="button" data-action="extract">Use escape seed ↗</button></div></section>`;
+      html += `<div class="floor-caption"><span>${["THE THRESHOLD", "THE ECHO CHAMBERS", "THE LAST WATCH"][state.floor - 1]}</span><span>SEED ${esc(state.seed)}</span></div><section class="bottom-panel"><span class="eyebrow">${state.floor === 3 ? "FIND THE WARDEN" : "EXPLORE AT YOUR OWN PACE"}</span><h3>${state.floor === 3 ? "The last watch" : "A little further?"}</h3><p>Tap to walk. Touch an enemy to battle.<br>Find the stairs, or take a detour for treasure.</p><div class="button-row"><button class="button" data-action="inventory">Bag <span style="color:var(--mint)">${usedSlots(state.items)}/${ITEM_SLOTS} item slots</span></button><button class="button" data-action="extract">Use escape seed ↗</button></div></section>`;
     }
     if (inBattle) {
       const b = state.battle;
@@ -538,7 +516,7 @@ function renderUI() {
       if (b.phase === "command") {
         const s = currentSelection(),
           p = s.preview;
-        html += `<section class="bottom-panel combat-panel"><div class="target-picker"><button data-action="target-prev" aria-label="Previous target">‹</button><div class="target-info"><b>${s.ability.target === "ally" ? "ALLY" : "TARGET"} · ${esc(s.target?.name)}</b><span>${s.target?.hp} / ${s.target?.maxHp} HP · ${s.target?.type} · swipe target to change</span></div><button data-action="target-next" aria-label="Next target">›</button></div><div class="ability-picker"><button class="button arrow" data-action="ability-prev" aria-label="Previous ability">‹</button><div class="ability-card" id="ability-swipe"><b>${esc(s.ability.name)}</b><div class="ability-meta">${s.ability.tier.toUpperCase()} · ${s.ability.type.toUpperCase()} · ${s.ability.mp} MP</div></div><button class="button arrow" data-action="ability-next" aria-label="Next ability">›</button></div><div class="preview"><span>Preview <strong>${p.healing ? `+${p.healing} HP` : p.damage ? `${p.damage} damage` : "Full health"}</strong>${s.ability.augment ? ` · ${Math.round(p.statusChance * 100)}% ${s.ability.augment.status}` : ""}</span><span>${p.chargeSeconds?.toFixed(1)}s charge</span></div><button class="button primary" style="width:100%" data-action="confirm" ${p.valid ? "" : "disabled"}>${p.valid ? "Confirm action →" : "Not enough MP"}</button></section>`;
+        html += `<section class="bottom-panel combat-panel"><div class="target-picker"><button data-action="target-prev" ${s.ability.target === "all" ? "disabled" : ""} aria-label="Previous target">‹</button><div class="target-info"><b>${s.ability.target === "all" ? "ALL ENEMIES" : `${s.ability.target === "ally" ? "ALLY" : "TARGET"} · ${esc(s.target?.name)}`}</b><span>${s.ability.target === "all" ? `${s.targets.length} enemies · hits every enemy` : `${s.target?.hp} / ${s.target?.maxHp} HP · ${s.target?.type} · swipe target to change`}</span></div><button data-action="target-next" ${s.ability.target === "all" ? "disabled" : ""} aria-label="Next target">›</button></div><div class="ability-picker"><button class="button arrow" data-action="ability-prev" aria-label="Previous ability">‹</button><div class="ability-card" id="ability-swipe"><b>${esc(s.ability.name)}</b><div class="ability-meta">${s.ability.tier.toUpperCase()} · ${s.ability.type.toUpperCase()} · ${s.ability.mp} MP</div></div><button class="button arrow" data-action="ability-next" aria-label="Next ability">›</button></div><div class="preview"><span>Preview <strong>${p.healing ? `+${p.healing} HP` : p.damage ? `${p.damage} damage` : "Full health"}</strong>${s.ability.augment ? ` · ${Math.round(p.statusChance * 100)}% ${s.ability.augment.status}` : ""}</span><span>${p.chargeSeconds?.toFixed(1)}s charge</span></div><button class="button primary" style="width:100%" data-action="confirm" ${p.valid ? "" : "disabled"}>${p.valid ? "Confirm action →" : "Not enough MP"}</button></section>`;
       } else
         html += `<section class="bottom-panel waiting-panel"><span class="eyebrow">ACTIONS ARE COMMITTED</span><span class="pulse">◆</span><h3>Watch the timeline</h3><p>Your next choice will pause the battle.<br>COM: choose · ACT: resolve</p></section>`;
     }
@@ -555,7 +533,7 @@ function renderUI() {
     ? "Choose your companions, then step through the gate."
     : inBattle
       ? "The entire timeline stops while you choose. Pick a target, preview the result, then commit."
-      : "Rooms hold danger. Corridors offer a breath. The stairs are a choice, not a checklist.";
+      : "Enemies pursue through rooms and corridors. Gain distance to escape. The stairs are a choice, not a checklist.";
 }
 function renderModal() {
   if (!modal) {
@@ -579,7 +557,7 @@ function renderModal() {
     c = `<span class="eyebrow">KNOW WHEN TO LEAVE</span><h2>Take the way home?</h2><p>Your escape seed ends this expedition safely. Bank ${state.runGold} gold and keep your Familiars’ levels.</p>${btn("Use seed & extract", "extract-confirm", "primary")}${btn("Keep climbing", "close")}`;
   }
   if (m.type === "chest") {
-    c = `<span class="eyebrow">A DETOUR WELL TAKEN</span><h2>Something worth keeping</h2><div class="item-card"><span class="item-symbol">◈</span><div><b>${m.gold} gold</b><p>Bank it by extracting safely.</p></div></div><div class="item-card"><span class="item-symbol">✚</span><div><b>Healing draught</b><p>Restore 40 HP to one living ally.</p></div></div>${btn("Pack it & keep moving", "close", "primary")}`;
+    c = `<span class="eyebrow">A DETOUR WELL TAKEN</span><h2>Something worth keeping</h2><div class="item-card"><span class="item-symbol">◈</span><div><b>${m.gold} gold</b><p>Bank it by extracting safely.</p></div></div><div class="item-card"><span class="item-symbol">✚</span><div><b>Healing draught</b><p>${m.packed ? "Packed in its own slot. Restore 40 HP to one living ally." : "Bag full. Left in this chest; return after freeing a slot."}</p></div></div>${btn("Pack it & keep moving", "close", "primary")}`;
   }
   if (m.type === "reward") {
     c = `<span class="eyebrow">ENCOUNTER CLEARED</span><h2>${m.boss ? "The Warden falls." : "A moment to breathe."}</h2><div class="item-card"><span class="item-symbol">◈</span><div><b>${m.amount} gold recovered</b><p>${state.runGold} total carried this expedition.</p></div></div><div class="item-card"><span class="item-symbol">✧</span><div><b>${m.levelUp ? "Your party grows stronger" : "Experience gained"}</b><p>${m.levelUp ? "Living allies gain a level, up to level 3." : "A level after every two victories, up to level 3."}</p></div></div><p>HP and MP carry into the next encounter. Your bag can help you recover.</p>${btn(m.boss ? "Carry the light home →" : "Return to the dungeon →", "continue", "primary")}`;
@@ -590,14 +568,17 @@ function renderModal() {
   if (m.type === "inventory" || m.type === "supplies") {
     const live = m.type === "inventory";
     const items = live ? state.items : { potion: 2, tonic: 1, seed: 1 };
-    c = `<span class="eyebrow">${live ? "YOUR EXPEDITION BAG" : "PACKED FOR THE FIRST STEPS"}</span><h2>${live ? "Travel light." : "The expedition kit"}</h2><p>Three item slots. Matching supplies stack. ${live ? "Use recovery items between battles." : "Each demo climb starts with these supplies."}</p>${[
+    c = `<span class="eyebrow">${live ? "YOUR EXPEDITION BAG" : "PACKED FOR THE FIRST STEPS"}</span><h2>${live ? "Travel light." : "The expedition kit"}</h2><p>10 starting slots: 3 equipment + 7 items. Only currencies stack. ${usedSlots(items)}/${ITEM_SLOTS} item slots occupied. ${live ? "Use recovery items between battles." : "Each demo climb starts with these supplies."}</p>${[
       ["potion", "Healing draught", "Restore 40 HP to one living ally.", "✚"],
       ["tonic", "Ether tonic", "Restore 16 MP to one living ally.", "✧"],
       ["seed", "Escape seed", "Return safely with your carried gold.", "↗"],
     ]
-      .map(
-        ([id, name, desc, icon]) =>
-          `<div class="item-card"><span class="item-symbol">${icon}</span><div><b>${name}</b><p>${desc}</p></div><span class="count">${items[id]}</span></div>${live && items[id] > 0 ? btn(id === "seed" ? "Use escape seed" : `Use ${name.toLowerCase()}`, "item-" + id, "small") : ""}`,
+      .flatMap(([id, name, desc, icon]) =>
+        Array.from(
+          { length: items[id] },
+          () =>
+            `<div class="item-card" data-item="${id}"><span class="item-symbol">${icon}</span><div><b>${name}</b><p>${desc}</p></div>${live ? btn("Use", "item-" + id, "small") : ""}</div>`,
+        ),
       )
       .join(
         "",
@@ -739,12 +720,22 @@ class ScrollScene extends Phaser.Scene {
       repeat: -1,
     });
     this.input.on("pointerdown", (p) => {
-      this.press = { x: p.x, y: p.y };
+      this.press = { x: p.x / displayScale, y: p.y / displayScale };
     });
-    this.input.on("pointerup", (p) => {
+    this.input.on("pointerup", (pointer) => {
+      const p = { x: pointer.x / displayScale, y: pointer.y / displayScale };
       if (modal) return;
-      if (state.mode === "explore" && p.y > MAP_Y && p.y < MAP_Y + 25 * TILE) {
-        moveTo((p.x - MAP_X) / TILE - 0.5, (p.y - MAP_Y) / TILE - 0.5);
+      if (
+        state.mode === "explore" &&
+        p.x >= MAP_X &&
+        p.x < MAP_X + VIEW_SIZE &&
+        p.y >= MAP_Y &&
+        p.y < MAP_Y + VIEW_SIZE
+      ) {
+        moveTo(
+          (p.x - MAP_X - this.mapView.x) / TILE - 0.5,
+          (p.y - MAP_Y - this.mapView.y) / TILE - 0.5,
+        );
       } else if (
         state.mode === "combat" &&
         state.battle.phase === "command" &&
@@ -756,6 +747,7 @@ class ScrollScene extends Phaser.Scene {
         else {
           const candidates = Object.entries(this.unitViews).filter(
             ([id, v]) =>
+              v.image.visible &&
               state.battle.units.find((u) => u.id === id)?.side === "enemy",
           );
           const hit = candidates.find(
@@ -773,6 +765,7 @@ class ScrollScene extends Phaser.Scene {
     });
     this.redraw();
     renderUI();
+    resize();
     window.__scrollReady = true;
   }
   put(obj) {
@@ -781,7 +774,19 @@ class ScrollScene extends Phaser.Scene {
   }
   image(x, y, key, width, height = width) {
     const o = this.put(this.addExistingImage(x, y, key));
-    o.setDisplaySize(width, height);
+    if (
+      ["slime", "bat", "skeleton", "boss"].includes(key.replace("map-", ""))
+    ) {
+      // Uniform whole source pixels in the screen-sized render target.
+      o.setScale(
+        Math.max(
+          1,
+          Math.floor(
+            Math.min(width / o.width, height / o.height) * displayScale,
+          ),
+        ) / displayScale,
+      );
+    } else o.setDisplaySize(width, height);
     return o;
   }
   addExistingImage(x, y, key) {
@@ -810,6 +815,10 @@ class ScrollScene extends Phaser.Scene {
     if (!this.art) return;
     for (const effect of this.effects.list) this.tweens.killTweensOf(effect);
     this.effects.removeAll(true);
+    if (this.mapCamera) this.cameras.remove(this.mapCamera);
+    this.mapCamera = null;
+    this.mapView?.destroy(true);
+    this.mapView = null;
     this.art.removeAll(true);
     this.unitViews = {};
     this.mapEnemies = {};
@@ -874,16 +883,17 @@ class ScrollScene extends Phaser.Scene {
   }
   drawMap() {
     const m = state.map;
-    this.rect(MAP_X - 10, MAP_Y - 9, 19 * TILE + 20, 25 * TILE + 18, 0x0d191e);
+    this.rect(MAP_X - 10, MAP_Y - 9, VIEW_SIZE + 20, VIEW_SIZE + 18, 0x0d191e);
     const border = this.put(this.addExistingGraphics());
     border.lineStyle(1, 0x829c69, 0.3);
     border.strokeRoundedRect(
       MAP_X - 11,
       MAP_Y - 10,
-      19 * TILE + 22,
-      25 * TILE + 20,
+      VIEW_SIZE + 22,
+      VIEW_SIZE + 20,
       9,
     );
+    const firstMapChild = this.art.length;
     for (let y = 0; y < m.height; y++)
       for (let x = 0; x < m.width; x++) {
         const walk = m.tiles[y][x] === 1;
@@ -942,7 +952,7 @@ class ScrollScene extends Phaser.Scene {
       const image = this.image(
         0,
         0,
-        e.kind,
+        "map-" + e.kind,
         e.boss ? 28 : 20,
         e.boss ? 31 : 22,
       );
@@ -954,6 +964,22 @@ class ScrollScene extends Phaser.Scene {
     )
       .setScale(1.2)
       .play("hero-idle");
+    const mapObjects = this.art.list.slice(firstMapChild);
+    this.art.remove(mapObjects);
+    this.mapView = this.add.container(0, 0, mapObjects);
+    this.cameras.main.ignore(this.mapView);
+    this.mapCamera = this.cameras.add(
+      Math.round(MAP_X * displayScale),
+      Math.round(MAP_Y * displayScale),
+      Math.round(VIEW_SIZE * displayScale),
+      Math.round(VIEW_SIZE * displayScale),
+    );
+    this.mapCamera
+      .setOrigin(0, 0)
+      .setZoom(displayScale)
+      .setScroll(MAP_X, MAP_Y);
+    this.mapCamera.roundPixels = true;
+    this.mapCamera.ignore([this.art, this.effects]);
     this.updateMap();
   }
   showDestination(p) {
@@ -965,6 +991,13 @@ class ScrollScene extends Phaser.Scene {
   }
   updateMap() {
     if (!this.heroView || !state.player) return;
+    // Move the world underneath a fixed square viewport; never reveal more at an edge.
+    this.mapView.setPosition(
+      Math.round((VIEW_RADIUS - state.player.x) * TILE * displayScale) /
+        displayScale,
+      Math.round((VIEW_RADIUS - state.player.y) * TILE * displayScale) /
+        displayScale,
+    );
     const x = MAP_X + (state.player.x + 0.5) * TILE,
       y = MAP_Y + (state.player.y + 0.5) * TILE;
     this.heroView.setPosition(x, y - 3);
@@ -1011,7 +1044,9 @@ class ScrollScene extends Phaser.Scene {
     enemies.forEach((u, i) => {
       const x = enemies.length === 1 ? 220 : 143 + i * 155,
         y = u.texture === "boss" ? 385 : 396;
-      g.fillStyle(0x071218, 0.5).fillEllipse(x, y + 36, 90, 20);
+      const shadow = this.put(
+        this.add.ellipse(x, y + 36, 90, 20, 0x071218, 0.5),
+      );
       const image = this.image(
         x,
         y,
@@ -1022,7 +1057,7 @@ class ScrollScene extends Phaser.Scene {
       const label = this.text(x, 449, u.name, 12, "#e5e1ca");
       const intent = this.text(x, 432, "", 9, "#e6bc73");
       const hp = this.text(x, 473, `${u.hp}/${u.maxHp}`, 9, "#94b698");
-      this.unitViews[u.id] = { x, y, image, label, hp, intent };
+      this.unitViews[u.id] = { x, y, image, label, hp, intent, shadow };
     });
     state.party.forEach((u, i) => {
       const x = 120 + i * 100,
@@ -1048,9 +1083,33 @@ class ScrollScene extends Phaser.Scene {
     g.lineBetween(295, 172, 295, 195);
     g.lineBetween(402, 172, 402, 195);
     const selection = b.phase === "command" ? currentSelection() : {};
+    const enemies = b.units.filter((u) => u.side === "enemy" && u.hp > 0);
+    const active = b.units
+      .filter((u) => u.queued)
+      .sort((a, c) => c.position - a.position)[0];
+    const ability = selection.ability ?? ABILITIES[active?.queued?.abilityId];
+    const showAll = ability?.target === "all";
+    const focus =
+      (selection.target?.side === "enemy" ? selection.target : null) ??
+      enemies.find((u) => u.id === active?.queued?.targetId) ??
+      enemies.find((u) => u.id === active?.id) ??
+      enemies[0];
+    this.visibleEnemyIds = (showAll ? enemies : [focus].filter(Boolean)).map(
+      (u) => u.id,
+    );
+    enemies.forEach((u, i) => {
+      const v = this.unitViews[u.id];
+      v.x = showAll ? (W * (i + 1)) / (enemies.length + 1) : W / 2;
+      v.image.setPosition(v.x, v.y);
+      for (const part of [v.label, v.hp, v.intent, v.shadow]) part.setX(v.x);
+    });
     for (const u of b.units) {
       const v = this.unitViews[u.id];
       if (v) {
+        if (u.side === "enemy") {
+          for (const part of [v.image, v.label, v.hp, v.intent, v.shadow])
+            part.setVisible(this.visibleEnemyIds.includes(u.id));
+        }
         v.image.setAlpha(u.hp > 0 ? 1 : 0.18);
         v.intent?.setText(
           u.hp > 0 && u.queued ? ABILITIES[u.queued.abilityId].name + "…" : "",
@@ -1058,7 +1117,11 @@ class ScrollScene extends Phaser.Scene {
         v.hp?.setText(
           `${Math.max(0, u.hp)}/${u.maxHp} HP${u.statuses && Object.keys(u.statuses).length ? " · " + Object.keys(u.statuses).join(", ") : ""}`,
         );
-        v.image.setTint(selection.target?.id === u.id ? 0xffe1aa : 0xffffff);
+        v.image.setTint(
+          selection.target?.id === u.id || (showAll && u.side === "enemy")
+            ? 0xffe1aa
+            : 0xffffff,
+        );
       }
       if (u.hp <= 0) continue;
       const x = 46 + (u.position / 100) * 356,
@@ -1075,7 +1138,10 @@ class ScrollScene extends Phaser.Scene {
       );
       g.fillCircle(x, y, 5);
       g.lineStyle(1, 0x112128, 1).strokeCircle(x, y, 5);
-      if (selection.target?.id === u.id && v) {
+      if (
+        (selection.target?.id === u.id || (showAll && u.side === "enemy")) &&
+        v
+      ) {
         g.lineStyle(1.5, 0xe6bc73, 0.8).strokeEllipse(
           v.x,
           v.y + 43,
@@ -1087,7 +1153,7 @@ class ScrollScene extends Phaser.Scene {
   }
   combatEffect(e) {
     const v = this.unitViews[e.targetId];
-    if (!v) return;
+    if (!v || !v.image.visible) return;
     const txt = this.make
       .text({
         x: v.x,
@@ -1138,7 +1204,9 @@ class ScrollScene extends Phaser.Scene {
 }
 // Scene helpers intentionally avoid physics: all movement uses the validated floor grid.
 game = new Phaser.Game({
-  type: Phaser.CANVAS,
+  type: Phaser.WEBGL,
+  // Direct canvas exports need a retained WebGL buffer; normal play avoids its cost.
+  preserveDrawingBuffer: new URLSearchParams(location.search).has("capture"),
   parent: "phaser",
   width: W,
   height: H,
@@ -1167,12 +1235,20 @@ function resize() {
   $("#stage").style.width = `${W * scale}px`;
   $("#stage").style.height = `${H * scale}px`;
   $("#game-shell").style.transform = `scale(${scale})`;
-  game?.scale.updateBounds();
+  displayScale = scale;
+  if (scene?.cameras?.main) {
+    game.scale.resize(Math.round(W * scale), Math.round(H * scale));
+    game.canvas.style.width = `${game.scale.width / scale}px`;
+    game.canvas.style.height = `${game.scale.height / scale}px`;
+    scene.cameras.main.setOrigin(0, 0).setZoom(scale);
+    scene.redraw();
+    game.scale.refresh();
+  }
 }
 window.addEventListener("resize", resize);
 document.addEventListener("fullscreenchange", () => {
   resize();
-  requestAnimationFrame(() => game.scale.updateBounds());
+  requestAnimationFrame(() => game.scale.refresh());
 });
 resize();
 window.advanceTime = async (ms) => {
@@ -1186,10 +1262,30 @@ window.advanceTime = async (ms) => {
 };
 window.render_game_to_text = () =>
   JSON.stringify({
+    engine: {
+      version: Phaser.VERSION,
+      renderer: game.renderer?.type === Phaser.WEBGL ? "WebGL" : "Canvas",
+    },
     mode: state.mode,
     modal: modal?.type ?? null,
     coordinateSystem:
-      "19x25 tile grid; (0,0) top left; x right, y down. Canvas map origin (58.5,198), tile17. Tap tile center.",
+      "World tile grid: (0,0) top left; x right, y down. Camera shows 11x11 tiles centered on player. Screen tile center = viewport origin + worldOffset + (tile + 0.5) * tileSize, in logical canvas coordinates.",
+    viewport:
+      state.mode === "explore"
+        ? {
+            x: MAP_X,
+            y: MAP_Y,
+            width: VIEW_SIZE,
+            height: VIEW_SIZE,
+            tileSize: TILE,
+            radius: VIEW_RADIUS,
+            tilesAcross: VIEW_TILES,
+            worldOffset: {
+              x: scene?.mapView?.x ?? 0,
+              y: scene?.mapView?.y ?? 0,
+            },
+          }
+        : null,
     floor: state.floor,
     seed: state.seed,
     party: state.party.map((u) => ({
@@ -1204,6 +1300,12 @@ window.render_game_to_text = () =>
     gold: state.runGold,
     bankedGold: meta.gold,
     items: state.items,
+    inventory: {
+      totalSlots: 10,
+      equipmentSlots: 3,
+      itemSlots: ITEM_SLOTS,
+      usedItemSlots: usedSlots(state.items),
+    },
     player: state.player,
     path: state.path,
     map:
@@ -1226,6 +1328,18 @@ window.render_game_to_text = () =>
         : undefined,
     battle: state.battle
       ? {
+          visibleEnemyIds: scene?.visibleEnemyIds ?? [],
+          enemyRendering: Object.entries(scene?.unitViews ?? {})
+            .filter(([id]) =>
+              state.battle.units.some((u) => u.id === id && u.side === "enemy"),
+            )
+            .map(([id, v]) => ({
+              id,
+              visible: v.image.visible,
+              pixelScale: v.image.scaleX * displayScale,
+              width: v.image.width,
+              height: v.image.height,
+            })),
           phase: state.battle.phase,
           time: state.battle.time,
           pendingActorId: state.battle.pendingActorId,

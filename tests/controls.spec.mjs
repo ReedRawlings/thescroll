@@ -1,3 +1,4 @@
+import { tapTowerTile } from "./tower-input.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -30,10 +31,7 @@ for (const [dx, dy] of [
   }
 const canvas = p.locator("canvas");
 const rect = await canvas.boundingBox();
-await p.mouse.click(
-  rect.x + ((58.5 + (target.x + 0.5) * 17) * rect.width) / 440,
-  rect.y + ((198 + (target.y + 0.5) * 17) * rect.height) / 820,
-);
+await tapTowerTile(p, target.x, target.y);
 await p.waitForTimeout(600);
 assert(
   Math.hypot(
@@ -56,11 +54,20 @@ assert(
 );
 await p.screenshot({ path: "artifacts/controls/fullscreen.png" });
 const fullState = await snapshot();
-const fullTarget = {x: Math.round(fullState.player.x)-1, y:Math.round(fullState.player.y)};
+const fullTarget = {
+  x: Math.round(fullState.player.x) - 1,
+  y: Math.round(fullState.player.y),
+};
 const fullBox = await canvas.boundingBox();
-await p.mouse.click(fullBox.x+(58.5+(fullTarget.x+.5)*17)*fullBox.width/440,fullBox.y+(198+(fullTarget.y+.5)*17)*fullBox.height/820);
+await tapTowerTile(p, fullTarget.x, fullTarget.y);
 await p.waitForTimeout(600);
-assert(Math.hypot((await snapshot()).player.x-fullTarget.x,(await snapshot()).player.y-fullTarget.y)<.2, "fullscreen pointer maps correctly");
+assert(
+  Math.hypot(
+    (await snapshot()).player.x - fullTarget.x,
+    (await snapshot()).player.y - fullTarget.y,
+  ) < 0.2,
+  "fullscreen pointer maps correctly",
+);
 
 await p.keyboard.press("f");
 await p.waitForTimeout(250);

@@ -1,3 +1,4 @@
+import { tapTowerTile } from "./tower-input.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -17,11 +18,7 @@ async function ready() {
   await advance(0);
 }
 async function tile(x, y) {
-  const b = await page.locator("canvas").boundingBox();
-  await page.mouse.click(
-    b.x + ((58.5 + (x + 0.5) * 17) * b.width) / 440,
-    b.y + ((198 + (y + 0.5) * 17) * b.height) / 820,
-  );
+  await tapTowerTile(page, x, y);
 }
 async function walk(x, y, stopOnCombat = false) {
   for (let i = 0; i < 300; i++) {

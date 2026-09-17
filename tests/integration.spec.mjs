@@ -1,3 +1,4 @@
+import { tapTowerTile } from "./tower-input.mjs";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
@@ -20,16 +21,14 @@ const snap = (name) =>
     path: `artifacts/integration/${name}.png`,
     fullPage: true,
   });
+assert.equal((await read()).engine.version, "4.2.1");
+assert.equal((await read()).engine.renderer, "WebGL");
 await snap("town");
 await click("start");
 await snap("explore");
 const canvas = page.locator("canvas");
 async function tile(x, y) {
-  const box = await canvas.boundingBox();
-  await page.mouse.click(
-    box.x + ((58.5 + (x + 0.5) * 17) * box.width) / 440,
-    box.y + ((198 + (y + 0.5) * 17) * box.height) / 820,
-  );
+  await tapTowerTile(page, x, y);
 }
 let testedPause = false,
   battles = 0;
@@ -110,7 +109,7 @@ async function recover() {
     const hurt = now.party.find((u) => u.hp > 0 && u.hp < u.maxHp - 20);
     if (!hurt || !now.items.potion) break;
     await click("inventory");
-    await click("item-potion");
+    await page.locator('[data-action="item-potion"]').first().click();
     await page
       .locator(`[data-action="use-item"][data-id="${hurt.id}"]`)
       .click();

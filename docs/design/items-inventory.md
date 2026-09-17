@@ -4,19 +4,19 @@ Numbers: [tuning.md](../tuning.md)
 
 ## The inventory
 
-The starting inventory is deliberately tiny:
+The starting inventory has **10 slots total**: three equipment slots and seven item slots.
 
 | Slots | Count | Contents |
 | --- | --- | --- |
 | Equipment | 3 | Weapon, shield, boots |
-| Item | 3 | Consumables, eggs, escape seeds |
+| Item | 7 | Consumables, eggs, escape seeds |
 | **Secure** | **0** | Purchased from the Leathersmith |
 
 Both backpack slots and secure slots are **Leathersmith upgrades**. A new player has neither. Carrying capacity is a progression track, not a given.
 
 ### The escape seed tension
 
-An escape seed is the only voluntary way out of the tower, and it occupies one of three item slots. **Carrying your way out costs a third of your starting capacity.** This is intended: the decision to hold a seed versus one more healing item is the central inventory decision of an early climb, and expanding capacity at the Leathersmith is how that pressure is relieved.
+An escape seed is the only voluntary way out of the tower, and it occupies one of seven item slots. **Each seed occupies its own slot.** This is intended: the decision to hold a seed versus one more healing item is the central inventory decision of an early climb, and expanding capacity at the Leathersmith is how that pressure is relieved.
 
 ## Equipment
 
@@ -74,7 +74,7 @@ Base stat contribution is low — **1 to 10** — but equipment can be levelled 
 
 ## Rules
 
-- **Stacking** — same-named non-equipment items stack up to 99.
+- **Stacking** — only currencies stack. Every other item, including each potion, occupies its own slot.
 - **Discarding** — items can be discarded before and after a battle, not during.
 - **Death** — everything in an unsecured slot is lost, equipment included. Secure slots survive.
 - **Extraction** — loot is permanent if the player leaves the tower without dying.

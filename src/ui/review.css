@@ -1,0 +1,4 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; background: #15131e; overflow: hidden; }
+#ui-review { width: 100%; height: 100%; display: grid; place-items: center; }
+canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }

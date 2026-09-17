@@ -183,3 +183,43 @@ test("JSON suspend at COM and mid-charge resumes with identical gauges, choices 
   }
   assert.equal(original.phase, "won");
 });
+
+test("ALL attacks hit every living enemy for a single MP cost", () => {
+  ABILITIES.testAll = { ...ABILITIES.cleave, id: "testAll", target: "all" };
+  try {
+    const b = createBattle(createParty(), createEncounter(2), 9);
+    const hero = b.units.find((u) => u.id === "hero");
+    hero.abilities.push("testAll");
+    b.phase = "command";
+    b.pendingActorId = hero.id;
+    hero.position = 70;
+    const mp = hero.mp;
+    assert.equal(
+      chooseAbility(b, "testAll", b.units.find((u) => u.side === "enemy").id),
+      true,
+    );
+    for (
+      let i = 0;
+      i < 1000 &&
+      !b.events.some((e) => e.abilityId === "testAll" && e.type === "damage");
+      i++
+    ) {
+      if (b.phase === "command") {
+        const actor = b.units.find((u) => u.id === b.pendingActorId);
+        chooseAbility(
+          b,
+          actor.abilities[0],
+          b.units.find((u) => u.side === "enemy" && u.hp > 0).id,
+        );
+      } else stepBattle(b, 0.05);
+    }
+    assert.equal(
+      b.events.filter((e) => e.abilityId === "testAll" && e.type === "damage")
+        .length,
+      2,
+    );
+    assert.equal(hero.mp, mp - ABILITIES.testAll.mp);
+  } finally {
+    delete ABILITIES.testAll;
+  }
+});

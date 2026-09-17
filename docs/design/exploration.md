@@ -48,17 +48,17 @@ This is deliberate and it follows from permadeath: when death costs the climb, a
 
 | Rule | Behaviour |
 | --- | --- |
-| **Detection** | An enemy notices the player within an aggro radius |
-| **Chase** | Once alerted it pursues directly within its scene |
-| **Escape** | The player can outrun it. It gives up and returns to its patrol |
-| **Scope** | Aggro is **scene-scoped**, and **a scene is one room** — so enemies do not pursue out of the room they occupy |
-| **Trigger** | Contact starts the battle |
+| **Detection** | An enemy notices the player within its detection range with an unobstructed view |
+| **Chase** | Once alerted it paths through connected walkable rooms and corridors |
+| **Escape** | The player can gain enough distance to break pursuit. It returns along walkable paths |
+| **Scope** | Pursuit is **floor-wide**. Room boundaries and corridor entrances do not stop a chase |
+| **Trigger** | Contact starts the battle in rooms or corridors |
 
-The scene boundary is the hard limit on a chase. Because a scene is one room, this makes **rooms dangerous and the corridors between them safe**, giving the floor a legible rhythm: commit to a room, resolve or escape it, breathe on the way out.
+**Rooms and corridors form one continuous dungeon floor.** Corridors are ordinary connections, not protected zones. Enemies can follow through doorways and into other rooms; walls constrain visibility and movement. Room ownership is placement metadata, not a pursuit boundary.
 
-It also keeps the veteran victory lap intact — a fast party outruns what it meets and leaves the room.
+A fast party escapes by gaining distance, not simply stepping outside a room. Loops and junctions can provide alternate routes, while narrow passages can funnel pursuers or make retreat risky. Clearing an area can create breathing room, but corridor geometry alone does not guarantee safety.
 
-The rule is written in terms of scenes rather than rooms because the scene boundary is what actually governs pursuit. If a scene ever holds more than one room, the chase widens with it.
+Exploration pauses during battle and dialogs. Surviving map enemies retain their positions and pursuit state when exploration resumes. The demo Warden remains a stationary guardian. Prototype movement and detection defaults are recorded in [tuning.md](../tuning.md); production balance remains provisional.
 
 ### Consequence: the player controls their own level curve
 
@@ -84,5 +84,9 @@ Both confirmed as wanted, both **later**:
 - Whether the player can see into a room from the corridor before entering it.
 - Whether the player can get a first-strike advantage into the timeline for approaching unseen, and whether enemies get one for catching the player from behind.
 - What happens to defeated enemies — gone for the climb, or respawning.
-- Whether enemies can be seen from a corridor before entering a room.
+- How much advance information about threats is shown at doorways.
 - Whether there is any non-combat interaction on the floor (locked doors, switches, breakables).
+
+## Tower viewport
+
+Exploration uses a player-centered 11 × 11 tile camera: the player’s tile and five surrounding spaces in every direction. The camera follows movement and stays centered at floor edges, leaving out-of-floor space blank. Terrain, enemies, chests, stairs, and destination markers are clipped to the viewport. Taps are translated through the camera and accepted only inside its bounds. Floor example Play mode uses the same range; its explicit Overview remains available for design review.

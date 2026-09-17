@@ -6,6 +6,17 @@ A decision here is **settled**. If a design doc contradicts this log, the doc is
 
 ---
 
+
+## 2026-09-16 — Continuous dungeon pursuit; remove safe corridors
+
+Owner correction: the previous room-scoped pursuit and safe-corridor rules were unwanted and should have been removed. This entry supersedes those rules everywhere in earlier entries.
+
+Rooms have traditional walkable connections. Enemies can detect and pursue across doorways, corridors and other rooms; crossing a room boundary never grants safety. Walls constrain sight and movement. A chase can end by gaining distance, with prototype values in `tuning.md`. Contact starts combat anywhere on the walkable floor.
+
+The implementation preserves remaining enemies at their paused locations after battle instead of teleporting them to their spawn rooms. The stationary demo boss remains a guardian. The owning rule is in `design/exploration.md`; `design/level-design-research.md` has been revised for this correction.
+
+---
+
 ## 2026-09-15 — First implementation: party, targeting, command pause, references
 
 Confirmed by the owner:

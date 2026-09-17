@@ -27,6 +27,9 @@ A portrait, one-thumb roguelike RPG. Azure Dreams structure, JRPG exploration, G
 | [design/run-structure.md](design/run-structure.md) | Floors, sessions, tower reset, no-save rule, extraction, death, persistence |
 | [design/exploration.md](design/exploration.md) | Tap-to-move, visible enemies, aggro and chase |
 | [design/floor-generation.md](design/floor-generation.md) | Room and corridor layout, depth scaling, content placement |
+| [design/level-design-research.md](design/level-design-research.md) | Reviewed roguelike level-design research, proposed priorities and evaluation plan (not settled spec) |
+| [design/floor-examples.md](design/floor-examples.md) | Five complete playable floor examples, code references and review scope |
+| [design/room-studies.md](design/room-studies.md) | Reviewable room examples and proposed decoration workflow |
 | [design/combat-core.md](design/combat-core.md) | Turn flow, COM/ACT, targeting, fight length, cancel stub |
 | [design/enemy-ai.md](design/enemy-ai.md) | Enemy AI research and first-pass proposal (not settled spec) |
 | [design/combat-timing.md](design/combat-timing.md) | **Final spec.** IP gauge, speed and tier timing |

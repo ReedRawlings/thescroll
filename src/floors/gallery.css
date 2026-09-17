@@ -1,0 +1,273 @@
+.floors .workspace {
+  grid-template-columns: 200px minmax(350px, 640px) minmax(200px, 1fr);
+  gap: 24px;
+}
+.floors .gallery {
+  max-width: 1500px;
+}
+.floor-stage {
+  position: relative;
+}
+#floor-canvas {
+  width: 100%;
+  aspect-ratio: 1;
+}
+.floors #party {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.floors #party > div {
+  background: #20262d;
+  padding: 10px;
+  border-radius: 4px;
+}
+.floors #party strong {
+  font-size: 11px;
+  display: block;
+  color: #d5dfd7;
+}
+.floors #party span {
+  font-size: 10px;
+  color: #a4b4ba;
+  display: block;
+  margin-top: 5px;
+}
+.floors meter {
+  width: 100%;
+  height: 5px;
+  display: block;
+  margin-top: 7px;
+}
+.floors #supplies {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.floors select,
+.floors #supplies button,
+#next {
+  background: #272d35;
+  color: #d8c8a8;
+  border: 1px solid #48525d;
+  padding: 9px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+#next {
+  background: #ccb480;
+  color: #151e26;
+}
+.floors button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.floors #battle {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: linear-gradient(150deg, #152732f5, #312833fb);
+  padding: 24px;
+  overflow: auto;
+}
+.floors #battle[hidden] {
+  display: none;
+}
+.combat-head h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 8px 0;
+}
+.combat-units {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px 0;
+}
+.combat-unit {
+  text-align: center;
+  opacity: 0.7;
+}
+.combat-unit.selected {
+  opacity: 1;
+  color: #eed398;
+}
+.combat-unit img {
+  height: 90px;
+  max-width: 150px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+  margin: auto;
+}
+.combat-unit strong,
+.combat-unit span {
+  display: block;
+  font-size: 11px;
+  margin: 5px;
+}
+.timeline {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 18px;
+}
+.timeline > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 9px;
+}
+.timeline span {
+  width: 80px;
+}
+.timeline i {
+  display: block;
+  flex: 1;
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    var(--lane) var(--progress),
+    #41424a var(--progress)
+  );
+  position: relative;
+}
+.timeline i:after {
+  content: "";
+  position: absolute;
+  left: 70%;
+  height: 9px;
+  width: 1px;
+  background: #fff8;
+  top: -1px;
+}
+.ability-row {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.commands button {
+  border: 1px solid #776d58;
+  background: #252a32;
+  color: #e2d6bd;
+  padding: 11px;
+  flex: 1;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.commands button.active {
+  border-color: #e7c586;
+  background: #493e30;
+}
+.commands small {
+  display: block;
+  margin-top: 6px;
+  color: #a7adb4;
+  font-size: 9px;
+}
+.commands label {
+  font-size: 11px;
+}
+.commands #confirm {
+  display: block;
+  margin-top: 14px;
+  width: 100%;
+  background: #c9ac73;
+  color: #192028;
+}
+.commands p {
+  font-size: 12px;
+  text-align: center;
+  color: #a9b6bb;
+}
+@media (max-width: 1150px) {
+  .floors .workspace {
+    grid-template-columns: 160px minmax(300px, 1fr);
+  }
+  .floors .notes {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 650px) {
+  .floors .workspace {
+    display: block;
+  }
+  .floors .toolbar {
+    gap: 4px;
+  }
+  .floors .toolbar button {
+    padding: 8px 7px;
+    font-size: 10px;
+  }
+  .floors #battle {
+    padding: 12px;
+  }
+  .combat-head h2 {
+    font-size: 14px;
+  }
+  .combat-head .eyebrow {
+    font-size: 8px;
+  }
+  .combat-units {
+    padding: 5px 0;
+    gap: 10px;
+  }
+  .combat-unit img {
+    height: 55px;
+    max-width: 90px;
+  }
+  .combat-unit strong,
+  .combat-unit span {
+    font-size: 9px;
+    margin: 3px;
+  }
+  .timeline {
+    gap: 3px;
+    margin: 8px 0;
+  }
+  .timeline span {
+    width: 65px;
+    font-size: 8px;
+  }
+  .timeline i {
+    height: 4px;
+  }
+  .commands button {
+    padding: 7px;
+    font-size: 9px;
+  }
+  .commands small {
+    font-size: 8px;
+  }
+  .commands #confirm {
+    margin-top: 8px;
+  }
+  .ability-row {
+    margin-bottom: 7px;
+  }
+  .floors #supplies {
+    gap: 5px;
+  }
+  .floors #supplies button,
+  .floors select {
+    font-size: 10px;
+    padding: 8px;
+  }
+  .floors #party {
+    gap: 5px;
+  }
+  .floors #party > div {
+    padding: 7px;
+  }
+  .floors .legend {
+    flex-wrap: wrap;
+  }
+  .floors #party strong {
+    font-size: 10px;
+  }
+  .floors #party span {
+    font-size: 9px;
+  }
+}

@@ -110,7 +110,7 @@ export function generateDungeon(seed = "the-scroll", floor = 1) {
   for (const [a, b] of edges) {
     const p = center(rooms[a]),
       q = center(rooms[b]);
-    // Bends stay in the inter-room gaps so corridors remain safe and distinct.
+    // Bends stay in the inter-room gaps so rooms and corridors remain distinct.
     const points =
       (a === 0 && b === 1) || (a === 2 && b === 3)
         ? [p, { x: 9 + roll(2), y: p.y }, { x: 9, y: q.y }, q]

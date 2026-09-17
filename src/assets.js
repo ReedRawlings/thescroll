@@ -55,3 +55,28 @@ export const ASSETS = [
     frames: 6,
   },
 ];
+
+ASSETS.push({
+  key: "map-slime",
+  url: "assets/map-slime.png",
+  frameWidth: 16,
+  frameHeight: 16,
+});
+ASSETS.push({
+  key: "map-bat",
+  url: "assets/map-bat.png",
+  frameWidth: 16,
+  frameHeight: 16,
+});
+ASSETS.push({
+  key: "map-skeleton",
+  url: "assets/map-skeleton.png",
+  frameWidth: 16,
+  frameHeight: 16,
+});
+ASSETS.push({
+  key: "map-boss",
+  url: "assets/map-boss.png",
+  frameWidth: 16,
+  frameHeight: 16,
+});

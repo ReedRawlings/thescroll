@@ -90,11 +90,14 @@ This is the one documented exception to the rule that every number lives in this
 | Traversal, floors 11–25 | ~90 s |
 | Traversal, floors 26–40 | ~2–3 min |
 | Encounter model | Visible, avoidable. No random encounters |
-| Scene | One room |
-| Aggro scope | Scene-scoped. A scene is one room, so enemies do not pursue out of their room |
+| Pursuit scope | Entire connected floor; no protected room or corridor boundary |
 | Player movement speed | `OPEN` — a property of the equipped boots item |
 | Enemy chase speed | `OPEN` — must be below player speed |
-| Aggro radius | `OPEN` |
+| Aggro radius | `OPEN` for production; demo defaults below |
+| Demo player / chase / return speed | 3.3 / 1.65 / 1.1 tiles/s |
+| Demo detection radius | 3.3 tiles, unobstructed line of sight required |
+| Demo disengage distance | More than 7 tiles of straight-line separation; return to spawn along walkable paths |
+| Demo contact distance | Below 0.63 tile, with no wall between actors |
 | Enemies per room | `OPEN` |
 | Chest / relic spawn rate | `OPEN` |
 | Escape seed spawn rate | `OPEN` |
@@ -120,9 +123,10 @@ This is the one documented exception to the rule that every number lives in this
 | Constant | Value |
 | --- | --- |
 | Base equipment slots | 3 |
-| Base item slots | 3 |
+| Base item slots | 7 |
 | Base secure slots | 0 (purchased from the Leathersmith) |
-| Non-equipment stack limit | 99 |
+| Starting inventory slots | 10 (3 equipment + 7 items) |
+| Stacking | Currencies only; all other items use one slot each |
 | Item base stat contribution | 1–10 |
 | Equipment tradeoff magnitudes | `OPEN` |
 | Gold curve | `OPEN` |

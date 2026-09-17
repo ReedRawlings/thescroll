@@ -333,7 +333,8 @@ function resolve(b, u) {
   const a = ABILITIES[u.queued.abilityId];
   const ts = targets(b, u, a);
   const t = ts.find((t) => t.id === u.queued.targetId) ?? ts[0];
-  if (t) {
+  for (const target of a.target === "all" ? ts : [t].filter(Boolean)) {
+    const t = target;
     const amount = a.heal
       ? Math.min(t.maxHp - t.hp, a.heal + Math.round(u.atk * 0.5))
       : damage(u, t, a);

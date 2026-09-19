@@ -1,5 +1,7 @@
 const params = new URLSearchParams(location.search);
-if (params.has("tileset")) {
+if (params.has("editor")) {
+  import("./editor/editor.js");
+} else if (params.has("tileset")) {
   import("./tileset/study.js");
 } else if (params.has("rooms")) {
   import("./rooms/gallery.js");

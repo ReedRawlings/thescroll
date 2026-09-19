@@ -34,8 +34,32 @@ export function startFloor(index = 0, suppliedMap = null) {
   };
 }
 export function movePlayer(s, end) {
-  if (s.mode !== "explore" || !s.running || s.map.tiles[end.y]?.[end.x] !== 1)
-    return false;
+  if (s.mode !== "explore" || !s.running) return false;
+  const chest = s.map.chests.find(
+    (c) => c.solid && c.x === end.x && c.y === end.y,
+  );
+  if (chest) {
+    const start = s.path[0] ?? {
+      x: Math.round(s.player.x),
+      y: Math.round(s.player.y),
+    };
+    const options = [
+      [0, 1],
+      [1, 0],
+      [0, -1],
+      [-1, 0],
+    ]
+      .map(([dx, dy]) => ({ x: chest.x + dx, y: chest.y + dy }))
+      .filter((p) => s.map.tiles[p.y]?.[p.x] === 1)
+      .map((p) => ({ p, route: pathfind(s.map, start, p) }))
+      .filter(
+        ({ p, route }) => route.length || (p.x === start.x && p.y === start.y),
+      )
+      .sort((a, b) => a.route.length - b.route.length);
+    if (!options.length) return false;
+    end = options[0].p;
+  }
+  if (s.map.tiles[end.y]?.[end.x] !== 1) return false;
   if (Math.hypot(end.x - s.player.x, end.y - s.player.y) < 0.1) {
     s.path = [];
     return true;
@@ -94,6 +118,8 @@ export function tickFloor(s, dt) {
     return;
   }
   if (s.mode !== "explore") return;
+  for (const c of s.map.chests)
+    if (c.opened) c.openProgress = Math.min(0.6, (c.openProgress ?? 0) + dt);
   approach(s.player, s.path, MOVEMENT.playerSpeed, dt);
   updateEnemies(s.map, s.player, dt);
   for (const e of s.map.enemies)
@@ -111,7 +137,14 @@ export function tickFloor(s, dt) {
       return;
     }
   for (const c of s.map.chests)
-    if (!c.opened && Math.hypot(c.x - s.player.x, c.y - s.player.y) < 0.7) {
+    if (
+      !c.opened &&
+      (c.solid
+        ? Math.abs(c.x - s.player.x) + Math.abs(c.y - s.player.y) <= 1.05 &&
+          (Math.abs(c.x - s.player.x) < 0.05 ||
+            Math.abs(c.y - s.player.y) < 0.05)
+        : Math.hypot(c.x - s.player.x, c.y - s.player.y) < 0.7)
+    ) {
       c.opened = true;
       if (c.type === "potion") s.potions++;
       else if (c.type === "tonic") s.tonics++;

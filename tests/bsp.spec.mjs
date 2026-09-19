@@ -87,6 +87,7 @@ async function fight() {
   throw Error("Fight budget exceeded");
 }
 async function walk(target) {
+  target = target.approach ?? target;
   for (let n = 0; n < 900; n++) {
     let state = await read();
     if (state.mode === "combat") {
@@ -113,12 +114,20 @@ async function walk(target) {
   throw Error("Walk budget exceeded");
 }
 try {
-  await page.goto("http://127.0.0.1:5173/?bsp=1&capture=1");
+  await page.goto(
+    `${process.env.BSP_BASE_URL || "http://127.0.0.1:5173"}/?bsp=1&capture=1`,
+  );
   await page.waitForFunction(() => window.__scrollReady);
   await advance(0);
   const saved = await page.evaluate(() => JSON.stringify(localStorage));
   for (let i = 0; i < 3; i++) {
-    await page.locator("#seed").fill(["stone-01", "river", "ember"][i]);
+    await page
+      .locator("#seed")
+      .fill(
+        (process.env.BSP_SEEDS?.split(",") || ["stone-01", "river", "ember"])[
+          i
+        ],
+      );
     await page.locator("#seed-form button[type=submit]").click();
     let state = await read();
     await page.screenshot({

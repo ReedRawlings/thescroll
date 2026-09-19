@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ASSET_RULES } from "./asset-rules.js";
 import { generateBspFloor } from "./generated.js";
 import { terrainSprites } from "../tileset/render.js";
 const generated = new URLSearchParams(location.search).has("bsp");
@@ -30,7 +31,7 @@ let s = startFloor(0, generated ? all[0] : null),
   lastUI = "";
 const $ = (q) => document.querySelector(q);
 document.title = "The Scroll — Five floor expeditions";
-document.body.innerHTML = `<main class="gallery floors"><header class="masthead"><a class="wordmark" href="/">THE SCROLL</a><span>FIVE FLOOR EXPEDITIONS</span><a href="/?rooms=1">Room examples ↗</a></header><section class="intro"><div><span class="eyebrow">Connected places. Different journeys.</span><h1>Five ways through the tower.</h1></div><p>Whole floors, from entrance to stairs. Each has its own silhouette, connected areas, pursuit routes and optional discoveries.</p></section><section class="workspace"><nav><div class="room-list"></div><p class="nav-note">Select any floor.<br>Play to explore at close range.<br>Overview to inspect the whole plan.<br><br>Tap to move. Contact opens timeline combat. Stairs complete the expedition.</p></nav><div><div class="viewport"><div class="view-head"><strong id="floor-label"></strong><span id="dimensions"></span></div><div class="floor-stage"><div id="floor-canvas"></div><div id="battle" hidden></div></div><div class="toolbar"><button id="overview" aria-pressed="true">Overview</button><button id="decor" aria-pressed="true">Detail</button><button id="routes" aria-pressed="false">Routes</button><button id="labels" aria-pressed="false">Places</button><button id="reset">Reset</button><button id="play" class="try">Play ▶</button></div></div><div id="party"></div><div id="supplies"><select id="supply-target" aria-label="Supply recipient"></select><button data-supply="potion"></button><button data-supply="tonic"></button></div><p id="status" class="status" role="status"></p><div class="legend"><span><i class="dot"></i>Direct approach</span><span><i class="dot blue"></i>Alternate route</span><span>◇ Chest · ↑ Stairs</span></div><button id="next" hidden>Next floor →</button></div><aside class="notes" id="notes"></aside></section><section class="decoration-guide"><span class="eyebrow">What changed</span><h2>The layout carries the identity.</h2><div class="principles"><article><h3>Different silhouettes</h3><p>A courtyard ring, organic caves, linked archive wings, bridged islands and a stepped fortress.</p></article><article><h3>Connected spaces</h3><p>Choose a route across an entire floor. Optional wings carry rewards; loops reconnect and allow retreat.</p></article><article><h3>Functional decoration</h3><p>Solid furniture belongs to the layout. Surface details cluster near walls and activity, keeping paths clear.</p></article><article><h3>Playable review</h3><p>Shared movement and combat, manual ability and target choices, supplies and an actual floor exit.</p></article></div></section><p class="footer">Five authored floor examples, with seeded surface details. Each selection starts a fresh review expedition; no town saves are changed. The main tower generator is separate. Research and code references are recorded in docs/design/floor-examples.md.</p></main>`;
+document.body.innerHTML = `<main class="gallery floors"><header class="masthead"><a class="wordmark" href="/">THE SCROLL</a><span>FIVE FLOOR EXPEDITIONS</span><a href="/?editor=1">Room workshop ↗</a></header><section class="intro"><div><span class="eyebrow">Connected places. Different journeys.</span><h1>Five ways through the tower.</h1></div><p>Whole floors, from entrance to stairs. Each has its own silhouette, connected areas, pursuit routes and optional discoveries.</p></section><section class="workspace"><nav><div class="room-list"></div><p class="nav-note">Select any floor.<br>Play to explore at close range.<br>Overview to inspect the whole plan.<br><br>Tap to move. Contact opens timeline combat. Stairs complete the expedition.</p></nav><div><div class="viewport"><div class="view-head"><strong id="floor-label"></strong><span id="dimensions"></span></div><div class="floor-stage"><div id="floor-canvas"></div><div id="battle" hidden></div></div><div class="toolbar"><button id="overview" aria-pressed="true">Overview</button><button id="decor" aria-pressed="true">Detail</button><button id="routes" aria-pressed="false">Routes</button><button id="labels" aria-pressed="false">Places</button><button id="reset">Reset</button><button id="play" class="try">Play ▶</button></div></div><div id="party"></div><div id="supplies"><select id="supply-target" aria-label="Supply recipient"></select><button data-supply="potion"></button><button data-supply="tonic"></button></div><p id="status" class="status" role="status"></p><div class="legend"><span><i class="dot"></i>Direct approach</span><span><i class="dot blue"></i>Alternate route</span><span>◇ Chest · ↑ Stairs</span></div><button id="next" hidden>Next floor →</button></div><aside class="notes" id="notes"></aside></section><section class="decoration-guide"><span class="eyebrow">What changed</span><h2>The layout carries the identity.</h2><div class="principles"><article><h3>Different silhouettes</h3><p>A courtyard ring, organic caves, linked archive wings, bridged islands and a stepped fortress.</p></article><article><h3>Connected spaces</h3><p>Choose a route across an entire floor. Optional wings carry rewards; loops reconnect and allow retreat.</p></article><article><h3>Functional decoration</h3><p>Solid furniture belongs to the layout. Surface details cluster near walls and activity, keeping paths clear.</p></article><article><h3>Playable review</h3><p>Shared movement and combat, manual ability and target choices, supplies and an actual floor exit.</p></article></div></section><p class="footer">Five authored floor examples, with seeded surface details. Each selection starts a fresh review expedition; no town saves are changed. The main tower generator is separate. Research and code references are recorded in docs/design/floor-examples.md.</p></main>`;
 if (generated) {
   document.title = "The Scroll — Generated dungeon";
   $(".masthead span").textContent = "PROCEDURAL FLOOR / BSP";
@@ -231,6 +232,18 @@ const colors = {
 };
 class FloorScene extends Phaser.Scene {
   preload() {
+    if (generated) {
+      for (const a of Object.values(ASSET_RULES))
+        this.load.image(
+          a.key,
+          `/assets/reviewed/${encodeURIComponent(a.file)}`,
+        );
+      this.load.spritesheet(
+        "reviewed-chest-opening",
+        "/assets/reviewed/chest-opening.png",
+        { frameWidth: 16, frameHeight: 19 },
+      );
+    }
     if (generated)
       this.load.spritesheet("dungeon-atlas", "/assets/tileset-study.png", {
         frameWidth: 16,
@@ -424,7 +437,7 @@ class FloorScene extends Phaser.Scene {
               0.38,
             )
             .setDepth(1.8);
-        if (p.key === "torch") {
+        if (p.key === "torch" || p.file?.startsWith("Lamp")) {
           const light = this.add.graphics().setDepth(1.7);
           for (const [radius, alpha] of [
             [23, 0.045],
@@ -436,10 +449,15 @@ class FloorScene extends Phaser.Scene {
               .fillCircle(p.x * 16 + 8, p.y * 16 + 5, radius);
         }
         this.add
-          .image((p.x + w / 2) * 16, (p.y + h) * 16, p.key, 0)
+          .image(
+            (p.x + w / 2) * 16,
+            (p.y + h) * 16 + (p.offsetY ?? 0),
+            p.key,
+            0,
+          )
           .setOrigin(0.5, 1)
           .setAlpha(p.solid || p.authored ? 1 : 0.75)
-          .setDepth(p.y * 0.01 + 2);
+          .setDepth(p.y * 0.01 + (p.support ? 2.5 : 2));
       }
     }
     if (generated && decorated) {
@@ -452,7 +470,9 @@ class FloorScene extends Phaser.Scene {
           .image(p.x * 16 + 8, p.y * 16 + 17, p.key, 0)
           .setOrigin(0.5, 1)
           .setDepth(3);
-        const scale = Math.min(1, 13 / sprite.width, 24 / sprite.height);
+        const scale = generated
+          ? 1
+          : Math.min(1, 13 / sprite.width, 24 / sprite.height);
         sprite.setScale(scale);
         if (p.key === "torch") {
           const glow = this.add.graphics().setDepth(2.9);
@@ -479,11 +499,25 @@ class FloorScene extends Phaser.Scene {
             0x566272,
           )
           .setStrokeStyle(1, 0x9bafae);
-    for (const c of m.chests)
-      this.add
-        .image(c.x * 16 + 8, c.y * 16 + 8, "chest")
-        .setAlpha(c.opened ? 0.35 : 1)
-        .setDepth(5);
+    this.chestViews = m.chests.map((c) => ({
+      c,
+      view: c.solid
+        ? this.add
+            .image(
+              c.x * 16 + 8,
+              c.y * 16 + 16,
+              "reviewed-chest-opening",
+              c.opened
+                ? Math.min(5, Math.floor((c.openProgress ?? 0) * 10))
+                : 0,
+            )
+            .setOrigin(0.5, 1)
+            .setDepth(5)
+        : this.add
+            .image(c.x * 16 + 8, c.y * 16 + 8, "chest")
+            .setAlpha(c.opened ? 0.35 : 1)
+            .setDepth(5),
+    }));
     this.add
       .image(m.exit.x * 16 + 8, m.exit.y * 16 + 8, "stairs")
       .setScale(0.5)
@@ -536,6 +570,11 @@ class FloorScene extends Phaser.Scene {
   }
   updateActors() {
     if (!this.hero) return;
+    for (const { c, view } of this.chestViews ?? [])
+      if (c.solid)
+        view.setFrame(
+          c.opened ? Math.min(5, Math.floor((c.openProgress ?? 0) * 10)) : 0,
+        );
     this.hero.setPosition(s.player.x * 16 + 8, s.player.y * 16 + 6);
     for (const { e, view } of this.actors)
       view
@@ -612,6 +651,11 @@ window.render_game_to_text = () =>
       props: s.map.props,
       terrain: s.map.terrain,
       floorFrames: s.map.floorFrames,
+      wallDecor: s.map.wallDecor,
+      chestFrames: scene?.chestViews?.map(({ c, view }) => ({
+        id: c.id,
+        frame: view.frame.name,
+      })),
       exit: s.map.exit,
       chests: s.map.chests,
       enemies: s.map.enemies,

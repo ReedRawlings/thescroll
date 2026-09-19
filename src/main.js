@@ -1,7 +1,14 @@
 import Phaser from "phaser";
+import { generateBspFloor } from "./floors/generated.js";
+import { generateExpeditionFloor } from "./floors/expedition.js";
+import { ASSET_RULES } from "./floors/asset-rules.js";
+import { terrainSprites } from "./tileset/render.js";
+const runParams = new URLSearchParams(location.search);
+const generatedRun = runParams.has("generated");
+const floorLimit = generatedRun ? 1 : 3;
 import "./style.css";
 import { ASSETS } from "./assets.js";
-import { generateDungeon, pathfind, roomAt, seededRandom } from "./dungeon.js";
+import { pathfind, roomAt, seededRandom } from "./dungeon.js";
 import {
   MOVEMENT,
   approach,
@@ -30,8 +37,8 @@ const ITEM_SLOTS = 7; // Ten starting slots: three equipment plus seven items.
 const usedSlots = (items) =>
   Object.values(items).reduce((sum, count) => sum + count, 0);
 let displayScale = 1;
-const SAVE = "scroll-demo-v1",
-  META = "scroll-meta-v1";
+const SAVE = generatedRun ? "scroll-generated-save-v1" : "scroll-demo-v1",
+  META = generatedRun ? "scroll-generated-meta-v1" : "scroll-meta-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? "").replace(
@@ -126,13 +133,20 @@ function closeModal() {
   renderUI();
   save();
 }
-function startRun() {
+function startRun(restartSeed = null) {
   meta.runs++;
   state = {
     mode: "explore",
     party: newParty(),
     floor: 1,
-    seed: `${Math.floor(Math.random() * 89999) + 10000}`,
+    seed:
+      restartSeed ??
+      (generatedRun
+        ? $("#run-seed")
+          ? $("#run-seed").value.trim() || null
+          : runParams.get("seed")
+        : null) ??
+      `${Math.floor(Math.random() * 89999) + 10000}`,
     map: null,
     player: null,
     path: [],
@@ -144,6 +158,11 @@ function startRun() {
   };
   modal = null;
   $("#overlay").innerHTML = "";
+  if (generatedRun) {
+    resumeState = null;
+    runParams.set("seed", state.seed);
+    history.replaceState(null, "", `${location.pathname}?${runParams}`);
+  }
   loadFloor(1);
   journal("The gate closes behind your party.");
   save();
@@ -170,7 +189,9 @@ function loadFloor(floor) {
   state.floor = floor;
   state.stairsLatched = false;
   state.mode = "explore";
-  state.map = generateDungeon(state.seed, floor);
+  state.map = generatedRun
+    ? generateBspFloor(state.seed)
+    : generateExpeditionFloor(state.seed, floor);
   state.map.enemies.forEach((e) => {
     e.homeX = e.x;
     e.homeY = e.y;
@@ -182,7 +203,7 @@ function loadFloor(floor) {
   state.battle = null;
   redraw();
   journal(
-    `Floor ${floor}: ${["The Threshold", "The Echo Chambers", "The Last Watch"][floor - 1]}.`,
+    `Floor ${floor}: ${generatedRun ? "The shifting archive" : ["The Threshold", "The Echo Chambers", "The Last Watch"][floor - 1]}.`,
   );
   toast(
     floor === 1
@@ -206,7 +227,9 @@ function finishRun(won, cleared = false) {
   state.battle = null;
   journal(
     cleared
-      ? "The Warden falls. You carried the light out."
+      ? generatedRun
+        ? "Generated floor complete. You carried the light out."
+        : "The Warden falls. You carried the light out."
       : won
         ? "An escape seed unfolds a path home."
         : "Your party falls. The tower keeps the spoils.",
@@ -253,7 +276,11 @@ function enterBattle(encounter) {
   state.battle = createBattle(
     state.party,
     enemies,
-    Number(state.seed) + state.floor * 97 + state.victories,
+    (generatedRun
+      ? Math.floor(seededRandom(state.seed)() * 1000000)
+      : Number(state.seed)) +
+      state.floor * 97 +
+      state.victories,
   );
   selectedAbility = 0;
   selectedTarget = 0;
@@ -310,11 +337,35 @@ function continueAfterBattle() {
 }
 function moveTo(x, y) {
   if (state.mode !== "explore" || modal) return;
-  const end = { x: Math.round(x), y: Math.round(y) };
+  let end = { x: Math.round(x), y: Math.round(y) };
   const start = state.path[0] ?? {
     x: Math.round(state.player.x),
     y: Math.round(state.player.y),
   };
+  const chest = state.map.chests.find(
+    (c) => c.solid && c.x === end.x && c.y === end.y,
+  );
+  if (chest) {
+    const options = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]
+      .map(([dx, dy]) => ({ x: chest.x + dx, y: chest.y + dy }))
+      .filter((p) => state.map.tiles[p.y]?.[p.x] === 1);
+    options.sort(
+      (a, b) =>
+        pathfind(state.map, start, a).length -
+        pathfind(state.map, start, b).length,
+    );
+    end =
+      options.find(
+        (p) =>
+          (p.x === start.x && p.y === start.y) ||
+          pathfind(state.map, start, p).length,
+      ) ?? end;
+  }
   if (state.map.tiles[end.y]?.[end.x] !== 1) {
     toast("Choose a clear floor tile.");
     return;
@@ -356,14 +407,21 @@ function checkInteractions() {
       c.opened &&
       c.potion &&
       usedSlots(state.items) < ITEM_SLOTS &&
-      Math.hypot(p.x - c.x, p.y - c.y) < 0.85
+      (c.solid
+        ? Math.abs(p.x - c.x) + Math.abs(p.y - c.y) < 1.05
+        : Math.hypot(p.x - c.x, p.y - c.y) < 0.85)
     ) {
       state.items.potion++;
       c.potion = false;
       toast("Collected the healing draught left in the chest.");
       save();
     }
-    if (!c.opened && Math.hypot(p.x - c.x, p.y - c.y) < 0.85) {
+    if (
+      !c.opened &&
+      (c.solid
+        ? Math.abs(p.x - c.x) + Math.abs(p.y - c.y) < 1.05
+        : Math.hypot(p.x - c.x, p.y - c.y) < 0.85)
+    ) {
       c.opened = true;
       state.path = [];
       const gold = 10 + state.floor * 5;
@@ -384,7 +442,7 @@ function checkInteractions() {
   if (stairDistance < 0.72 && !state.stairsLatched) {
     state.stairsLatched = true;
     state.path = [];
-    if (state.floor === 3) {
+    if (state.floor === floorLimit) {
       const boss = m.enemies.find((e) => e.boss);
       if (boss) {
         toast("The Warden holds this gate. Defeat it to clear the demo.");
@@ -502,13 +560,13 @@ function renderUI() {
   ].join("|");
   if (key === lastUI) return;
   lastUI = key;
-  html = `<header class="topbar"><div><span class="eyebrow">${town ? "THE TOWN BELOW" : "THE SCROLL / EXPEDITION"}</span><h2>${town ? "Between climbs" : `Floor ${String(state.floor).padStart(2, "0")} <span style="font:12px sans-serif;color:#7c9788">/ 03</span>`}</h2></div><div class="currency"><span>◈ ${town ? meta.gold : state.runGold}</span><button class="icon-button" data-action="${town ? "help" : "pause"}" aria-label="${town ? "How to play" : "Pause game"}">${town ? "?" : "Ⅱ"}</button></div></header>`;
+  html = `<header class="topbar"><div><span class="eyebrow">${town ? "THE TOWN BELOW" : "THE SCROLL / EXPEDITION"}</span><h2>${town ? "Between climbs" : `Floor ${String(state.floor).padStart(2, "0")} <span style="font:12px sans-serif;color:#7c9788">/ ${String(floorLimit).padStart(2, "0")}</span>`}</h2></div><div class="currency"><span>◈ ${town ? meta.gold : state.runGold}</span><button class="icon-button" data-action="${town ? "help" : "pause"}" aria-label="${town ? "How to play" : "Pause game"}">${town ? "?" : "Ⅱ"}</button></div></header>`;
   if (town) {
-    html += `<div class="town-heading"><span class="eyebrow">A POCKET-SIZED ROGUELIKE</span><h1>THE SCROLL</h1><p>Some things are worth bringing back.</p></div><section class="bottom-panel town-bottom"><h3>Your little expedition</h3><div class="companions"><span class="companion"><img class="portrait-icon" src="/assets/familiarFire.png" alt="">Emberling <b>LV ${state.party[1].level}</b></span><span class="companion"><img class="portrait-icon" src="/assets/familiarIce.png" alt="">Rime <b>LV ${state.party[2].level}</b></span></div><button class="button primary" id="start-btn" data-action="${resumeState ? "resume" : "start"}" style="width:100%;min-height:51px">${resumeState ? "Resume expedition →" : "Enter the tower →"}</button><div class="button-row"><button class="button small" data-action="help">How to play</button><button class="button small" data-action="supplies">Expedition kit</button><button class="button small" data-action="guide">Field guide ↗</button></div><div class="town-footer">THREE FLOORS · TWO COMPANIONS · ONE WAY UP</div></section>`;
+    html += `<div class="town-heading"><span class="eyebrow">A POCKET-SIZED ROGUELIKE</span><h1>THE SCROLL</h1><p>Some things are worth bringing back.</p></div><section class="bottom-panel town-bottom"><h3>Your little expedition</h3><div class="companions"><span class="companion"><img class="portrait-icon" src="/assets/familiarFire.png" alt="">Emberling <b>LV ${state.party[1].level}</b></span><span class="companion"><img class="portrait-icon" src="/assets/familiarIce.png" alt="">Rime <b>LV ${state.party[2].level}</b></span></div>${generatedRun && !resumeState ? `<label style="display:block;margin:8px 0;font-size:12px">Floor seed <input id="run-seed" maxlength="80" placeholder="Random if blank" value="${esc(runParams.get("seed") || "")}" style="width:180px;padding:6px;background:#172b2c;color:#edf0df;border:1px solid #607b6b;border-radius:4px"></label>` : ""}<button class="button primary" id="start-btn" data-action="${resumeState ? "resume" : "start"}" style="width:100%;min-height:51px">${resumeState ? "Resume expedition →" : generatedRun ? "Start generated run →" : "Enter the tower →"}</button>${generatedRun ? `<button class="button small" data-action="choose-seed" style="width:100%;margin-top:6px">Try another seed / random floor</button>` : ""}<div class="button-row"><button class="button small" data-action="help">How to play</button><button class="button small" data-action="supplies">Expedition kit</button><button class="button small" data-action="guide">Field guide ↗</button></div><a class="text-link" href="${generatedRun ? "/" : "/?generated=1"}">${generatedRun ? "Back to standard expedition" : "Try a generated run →"}</a><div class="town-footer">${generatedRun ? "ONE FLOOR · SEPARATE TEST SAVE" : "THREE FLOORS · TWO COMPANIONS · ONE WAY UP"}</div></section>`;
   } else {
     html += partyHTML();
     if (state.mode === "explore") {
-      html += `<div class="floor-caption"><span>${["THE THRESHOLD", "THE ECHO CHAMBERS", "THE LAST WATCH"][state.floor - 1]}</span><span>SEED ${esc(state.seed)}</span></div><section class="bottom-panel"><span class="eyebrow">${state.floor === 3 ? "FIND THE WARDEN" : "EXPLORE AT YOUR OWN PACE"}</span><h3>${state.floor === 3 ? "The last watch" : "A little further?"}</h3><p>Tap to walk. Touch an enemy to battle.<br>Find the stairs, or take a detour for treasure.</p><div class="button-row"><button class="button" data-action="inventory">Bag <span style="color:var(--mint)">${usedSlots(state.items)}/${ITEM_SLOTS} item slots</span></button><button class="button" data-action="extract">Use escape seed ↗</button></div></section>`;
+      html += `<div class="floor-caption"><span>${generatedRun ? "GENERATED FLOOR" : ["THE THRESHOLD", "THE ECHO CHAMBERS", "THE LAST WATCH"][state.floor - 1]}</span><span>SEED ${esc(state.seed)}</span></div><section class="bottom-panel"><span class="eyebrow">${state.floor === 3 ? "FIND THE WARDEN" : "EXPLORE AT YOUR OWN PACE"}</span><h3>${state.floor === 3 ? "The last watch" : "A little further?"}</h3><p>Tap to walk. Touch an enemy to battle.<br>Find the stairs, or take a detour for treasure.</p><div class="button-row"><button class="button" data-action="inventory">Bag <span style="color:var(--mint)">${usedSlots(state.items)}/${ITEM_SLOTS} item slots</span></button><button class="button" data-action="extract">Use escape seed ↗</button></div></section>`;
     }
     if (inBattle) {
       const b = state.battle;
@@ -547,8 +605,11 @@ function renderModal() {
   if (m.type === "help") {
     c = `<span class="eyebrow">A SMALL GUIDE TO THE TOWER</span><h2>Swipe. Choose. Commit.</h2><ul class="help-list"><li><b>Explore:</b> tap any floor tile. Your party finds a path. Tap your character to stop.</li><li><b>Battle:</b> contact starts a fight. At COM, time freezes. Cycle an ability and target, then confirm. All three allies are yours to command.</li><li><b>Timing:</b> Fast charges quickly; Slow hits harder. Type cycle: Fire → Ice → Lightning → Fire.</li><li><b>Survive:</b> HP and MP carry between fights. Use your bag to recover, or spend an escape seed to bank your gold.</li><li><b>Climb:</b> find the stairs on each floor. Defeat the guardian on floor three to finish the demo.</li></ul>${btn("Ready to explore", "close", "primary")}<a class="text-link" href="/demo-guide.html" target="_blank">Read the complete field guide ↗</a>`;
   }
+  if (m.type === "choose-seed") {
+    c = `<span class="eyebrow">GENERATION TESTING</span><h2>Try another floor</h2><p>Start a fresh expedition. Your current run will be replaced.</p><label>Floor seed<input id="next-seed" maxlength="80" placeholder="Enter a seed" style="display:block;width:100%;padding:12px;margin:12px 0;background:#172b2c;color:#edf0df;border:1px solid #607b6b"></label>${btn("Play this seed", "play-seed", "primary")}${btn("New random floor", "random-generated")}${btn("Back", "close")}`;
+  }
   if (m.type === "pause") {
-    c = `<span class="eyebrow">TAKE A BREATH</span><h2>Expedition paused</h2><p>Nothing advances while this screen is open. Your current expedition is saved on this device.</p>${btn("Resume expedition", "close", "primary")}${btn("How to play", "help")}${btn("Return to title · keep expedition", "title")}<a class="text-link" href="/demo-guide.html" target="_blank">Demo decisions & mechanics ↗</a>`;
+    c = `<span class="eyebrow">TAKE A BREATH</span><h2>Expedition paused</h2><p>Nothing advances while this screen is open. Your current expedition is saved on this device.</p>${btn("Resume expedition", "close", "primary")}${generatedRun ? btn("Restart this seed", "restart-generated") + btn("Try another seed", "choose-seed") : ""}${btn("How to play", "help")}${btn("Return to title · keep expedition", "title")}<a class="text-link" href="/demo-guide.html" target="_blank">Demo decisions & mechanics ↗</a>`;
   }
   if (m.type === "stairs") {
     c = `<span class="eyebrow">THE WAY UP</span><h2>Leave this floor?</h2><p>The next floor holds stronger enemies. Any unopened chests and remaining encounters stay behind.</p><div class="item-card"><span class="item-symbol">↟</span><div><b>Floor ${state.floor + 1} · ${state.floor === 1 ? "The Echo Chambers" : "The Last Watch"}</b><p>Your HP and MP carry forward.</p></div></div>${btn("Climb the stairs →", "climb", "primary")}${btn("Keep exploring", "close")}`;
@@ -563,7 +624,7 @@ function renderModal() {
     c = `<span class="eyebrow">ENCOUNTER CLEARED</span><h2>${m.boss ? "The Warden falls." : "A moment to breathe."}</h2><div class="item-card"><span class="item-symbol">◈</span><div><b>${m.amount} gold recovered</b><p>${state.runGold} total carried this expedition.</p></div></div><div class="item-card"><span class="item-symbol">✧</span><div><b>${m.levelUp ? "Your party grows stronger" : "Experience gained"}</b><p>${m.levelUp ? "Living allies gain a level, up to level 3." : "A level after every two victories, up to level 3."}</p></div></div><p>HP and MP carry into the next encounter. Your bag can help you recover.</p>${btn(m.boss ? "Carry the light home →" : "Return to the dungeon →", "continue", "primary")}`;
   }
   if (m.type === "ending") {
-    c = `<div class="reward-seal"><span>${m.won ? "✦" : "◇"}</span></div><span class="eyebrow">${m.cleared ? "DEMO COMPLETE" : m.won ? "SAFE EXTRACTION" : "EXPEDITION ENDED"}</span><h2>${m.cleared ? "You found the way out." : m.won ? "Home, with something." : "The tower keeps its secrets."}</h2><p>${m.won ? `You brought back ${m.earned} gold from floor ${state.floor}. Your Familiars will remember this climb.` : "Carried gold and supplies are lost. Your Familiars keep their earned levels and return with you."}</p><div class="inventory-stats"><div>REACHED<b>${state.floor} / 3</b></div><div>VICTORIES<b>${state.victories}</b></div><div>BANKED GOLD<b>${meta.gold}</b></div></div>${btn("Return to town", "town", "primary")}<a class="text-link" href="/demo-guide.html" target="_blank">Behind the demo ↗</a>`;
+    c = `<div class="reward-seal"><span>${m.won ? "✦" : "◇"}</span></div><span class="eyebrow">${m.cleared ? "DEMO COMPLETE" : m.won ? "SAFE EXTRACTION" : "EXPEDITION ENDED"}</span><h2>${m.cleared ? "You found the way out." : m.won ? "Home, with something." : "The tower keeps its secrets."}</h2><p>${m.won ? `You brought back ${m.earned} gold from floor ${state.floor}. Your Familiars will remember this climb.` : "Carried gold and supplies are lost. Your Familiars keep their earned levels and return with you."}</p><div class="inventory-stats"><div>REACHED<b>${state.floor} / ${floorLimit}</b></div><div>VICTORIES<b>${state.victories}</b></div><div>BANKED GOLD<b>${meta.gold}</b></div></div>${generatedRun ? btn("Try another seed", "choose-seed", "primary") : ""}${btn("Return to town", "town", "primary")}<a class="text-link" href="/demo-guide.html" target="_blank">Behind the demo ↗</a>`;
   }
   if (m.type === "inventory" || m.type === "supplies") {
     const live = m.type === "inventory";
@@ -595,7 +656,26 @@ $("#game-shell").addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (!el || el.disabled) return;
   const a = el.dataset.action;
-  if (a === "start") startRun();
+  if (a === "close" && modal?.type === "choose-seed") {
+    const back = modal.back;
+    closeModal();
+    if (back) openModal(back.type, back);
+    return;
+  }
+  if (a === "choose-seed" && generatedRun)
+    openModal("choose-seed", { back: modal });
+  else if ((a === "random-generated" || a === "play-seed") && generatedRun) {
+    const seed = a === "play-seed" ? $("#next-seed").value.trim() : "";
+    if (a === "play-seed" && !seed) {
+      toast("Enter a seed, or choose New random floor.");
+      return;
+    }
+    startRun(
+      seed ||
+        `stone-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
+    );
+  } else if (a === "restart-generated" && generatedRun) startRun(state.seed);
+  else if (a === "start") startRun();
   else if (a === "resume") resumeRun();
   else if (a === "close") closeModal();
   else if (a === "town") returnTown();
@@ -692,6 +772,17 @@ class ScrollScene extends Phaser.Scene {
     super("Scroll");
   }
   preload() {
+    {
+      this.load.spritesheet("bsp-tiles", "/assets/tileset-study.png", {
+        frameWidth: 16,
+        frameHeight: 16,
+      });
+      for (const a of Object.values(ASSET_RULES))
+        this.load.image(
+          a.key,
+          "/assets/reviewed/" + encodeURIComponent(a.file),
+        );
+    }
     for (const a of ASSETS) {
       if (a.frameWidth)
         this.load.spritesheet(a.key, a.url, {
@@ -894,33 +985,73 @@ class ScrollScene extends Phaser.Scene {
       9,
     );
     const firstMapChild = this.art.length;
-    for (let y = 0; y < m.height; y++)
-      for (let x = 0; x < m.width; x++) {
-        const walk = m.tiles[y][x] === 1;
-        const adjacent =
-          walk ||
-          [
-            [0, 1],
-            [1, 0],
-            [-1, 0],
-            [0, -1],
-          ].some(([dx, dy]) => m.tiles[y + dy]?.[x + dx] === 1);
-        if (adjacent)
-          this.image(
-            MAP_X + (x + 0.5) * TILE,
-            MAP_Y + (y + 0.5) * TILE,
-            walk ? "floor" : "wall",
-            TILE,
-            TILE,
-          ).setAlpha(walk ? (roomAt(m, x, y) ? 0.94 : 0.72) : 0.4);
+    if (m.generated) {
+      for (const p of terrainSprites(m.terrain, m.floorFrames))
+        this.put(
+          this.add
+            .image(
+              MAP_X + (p.x + 0.5) * TILE,
+              MAP_Y + (p.y + 0.5) * TILE,
+              "bsp-tiles",
+              p.frame,
+            )
+            .setScale(2),
+        );
+      for (const p of m.wallFinishes ?? [])
+        this.put(
+          this.add
+            .image(
+              MAP_X + (p.x + 0.5) * TILE,
+              MAP_Y + (p.y + 0.5) * TILE,
+              "bsp-tiles",
+              p.frame,
+            )
+            .setScale(2),
+        );
+      for (const p of [...(m.wallDecor ?? []), ...m.props].sort(
+        (a, b) => a.y - b.y || (b.offsetY ?? 0) - (a.offsetY ?? 0),
+      )) {
+        const a = ASSET_RULES[p.file];
+        this.put(
+          this.add
+            .image(
+              MAP_X + p.x * TILE,
+              MAP_Y + (p.y + p.h) * TILE + (p.offsetY ?? 0) * 2,
+              a.key,
+            )
+            .setOrigin(0, 1)
+            .setScale(2),
+        );
       }
-    for (const r of m.rooms) {
-      const tx = MAP_X + (r.x + 0.5) * TILE,
-        ty = MAP_Y + (r.y + 0.5) * TILE;
-      const torch = this.put(
-        this.make.sprite({ x: tx, y: ty, key: "torch", add: true }),
-      ).setScale(0.85);
-      torch.play("torch-idle");
+    } else {
+      for (let y = 0; y < m.height; y++)
+        for (let x = 0; x < m.width; x++) {
+          const walk = m.tiles[y][x] === 1;
+          const adjacent =
+            walk ||
+            [
+              [0, 1],
+              [1, 0],
+              [-1, 0],
+              [0, -1],
+            ].some(([dx, dy]) => m.tiles[y + dy]?.[x + dx] === 1);
+          if (adjacent)
+            this.image(
+              MAP_X + (x + 0.5) * TILE,
+              MAP_Y + (y + 0.5) * TILE,
+              walk ? "floor" : "wall",
+              TILE,
+              TILE,
+            ).setAlpha(walk ? (roomAt(m, x, y) ? 0.94 : 0.72) : 0.4);
+        }
+      for (const r of m.rooms) {
+        const tx = MAP_X + (r.x + 0.5) * TILE,
+          ty = MAP_Y + (r.y + 0.5) * TILE;
+        const torch = this.put(
+          this.make.sprite({ x: tx, y: ty, key: "torch", add: true }),
+        ).setScale(0.85);
+        torch.play("torch-idle");
+      }
     }
     this.image(
       MAP_X + (m.stairs.x + 0.5) * TILE,
@@ -940,9 +1071,9 @@ class ScrollScene extends Phaser.Scene {
       this.image(
         MAP_X + (c.x + 0.5) * TILE,
         MAP_Y + (c.y + 0.5) * TILE,
-        "chest",
-        19,
-        17,
+        m.generated ? ASSET_RULES["Chest.png"].key : "chest",
+        m.generated ? 32 : 19,
+        m.generated ? 38 : 17,
       ).setAlpha(c.opened ? 0.35 : 1);
     this.destination = this.put(this.addExistingGraphics());
     for (const e of m.enemies) {
@@ -1287,6 +1418,7 @@ window.render_game_to_text = () =>
           }
         : null,
     floor: state.floor,
+    generatedRun,
     seed: state.seed,
     party: state.party.map((u) => ({
       id: u.id,
@@ -1311,6 +1443,8 @@ window.render_game_to_text = () =>
     map:
       state.mode === "explore"
         ? {
+            generated: !!state.map.generated,
+            rooms: state.map.rooms,
             tiles: state.map.tiles,
             stairs: state.map.stairs,
             chests: state.map.chests,

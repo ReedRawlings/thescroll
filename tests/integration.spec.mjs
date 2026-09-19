@@ -7,7 +7,7 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
-await page.goto("http://127.0.0.1:5173");
+await page.goto(process.env.GAME_BASE_URL || "http://127.0.0.1:5173");
 await page.evaluate(() => localStorage.clear());
 await page.reload();
 await page.waitForFunction(() => window.__scrollReady);
@@ -133,7 +133,7 @@ try {
     s = await read();
     if (s.mode === "ending") break;
     for (const chest of s.map.chests.filter((c) => !c.opened)) {
-      await walkTo(chest.x, chest.y);
+      await walkTo(chest.approach?.x ?? chest.x, chest.approach?.y ?? chest.y);
       await handle();
       await recover();
     }

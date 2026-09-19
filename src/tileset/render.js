@@ -13,6 +13,7 @@ export function terrainSprites(terrain, floorFrames) {
     y >= 0 &&
     x < w &&
     y < h &&
+    terrain[y][x] !== -1 &&
     !floor(x, y) &&
     [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => floor(x + dx, y + dy)));
   const horizontal = (x, y) =>
@@ -49,7 +50,8 @@ export function terrainSprites(terrain, floorFrames) {
         left !== right &&
         wall(x, y + 1) &&
         (floor(x - 1, y + 1) || floor(x + 1, y + 1));
-      out.push({ x, y: y - 1, frame: 40 + column, layer: "wall" });
+      if (terrain[y - 1]?.[x] !== -1)
+        out.push({ x, y: y - 1, frame: 40 + column, layer: "wall" });
       if (!down && internalVoid(x, y)) continue;
       out.push({
         x,
